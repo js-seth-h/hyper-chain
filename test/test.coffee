@@ -13,19 +13,20 @@ describe '?', ()->
       timing : ( Load Context | 변환 | Store Context | Filter )+
 
 
-      체인에 대한 호출은 call_context 를 만든다
-      call_context =  # created by hc()(input, callback)
+      체인에 대한 호출은 execute_context 를 만든다
+      execute_context =  # created by hc()(input, callback)
         input: initial input 
         callback: (args...)-> _callback args... if _callback
         output: null
         asyncTasks: 
           task_id: [error, args...]
           task_id: [error, args...]
-        exit_status: as a Promise 
-                error - 에러가 발생 
-                filtered - filter 되어 끝남
-                reduced - reduce 되어 끝남
-                finished - 모든 연산 끝남
+        exit_status:  
+            undefined: 아직 안끝남  
+            error - 에러가 발생 
+            filtered - filter 되어 끝남
+            reduced - reduce 되어 끝남
+            finished - 모든 연산 끝남
 
       OtherChain과 의존..? 
         > 다른 체인이 취급한 데이터에 반응하는 것...? 음 모듈 구조를 생각해야겠다.
@@ -37,7 +38,7 @@ describe '?', ()->
         그냥 함수 호출하는 것은 무난. chain을 함수화 할수 있음으로..
 
         기존 체인의 결과를 복사 받아, 독립적으로 구성하는 것은 아무 문제가 없다. 
-        구성된 기능을 임의로 늘리는 것은...?, 정확하게는 기존 chain의 call_context를 이어서 계속 처리하는것은..? 
+        구성된 기능을 임의로 늘리는 것은...?, 정확하게는 기존 chain의 execute_context를 이어서 계속 처리하는것은..? 
           -> 기능의 확장 이라는 측면에서 강함. 그러나 안전성을 훼손한다. 
           -> 심각한건 어디까지 될지 알수가 없고, 이는 프로그래밍할수 없는 상태(계획 불가)를 만든다 
         그런데 체인은 원래 늘어날수 있는 것이 정상 상태다. .frezee() / .seal()등의 처리가 별개로 있어야.
@@ -45,10 +46,10 @@ describe '?', ()->
           otherChain.do (cur)->
             sync = @async 'connect'
             thisChain cur, sync
-        내가 다른 체인을 불러 내는 것이나. 다른 체인이 나를 불러 내는 것이나. 가능. 그러나 call_context는 공유안됨. 
+        내가 다른 체인을 불러 내는 것이나. 다른 체인이 나를 불러 내는 것이나. 가능. 그러나 execute_context는 공유안됨. 
         공유하려면 체인과 체인의 관계가 아니라, 하나의 체인을 변경해야한다. 
           1. 바로 수정하던지, 2. 복사하여 수정하던지, 3. Merge하여..(= 연속된 복사자나...쯥.)
-        에러를 전파받던 말던, call_context가 다르다.
+        에러를 전파받던 말던, execute_context가 다르다.
 
         But, Error 전파의 파급이 꽤 크지않나...? 아닌가..? 고민할 필요가 없을듯하다.
         Error에 대해서는 직접 처리할수 있으면하고, Default로 전파해야한다. 흐름의 시작점은 어쩃든 모든 Error를 커버해야한다. 
@@ -61,8 +62,8 @@ describe '?', ()->
 
           결국 동작이 성격에 따라 달라야겠다. 문제는 확장하는 놈의 사양을 당하는 놈이 알수는 없음으로, 추가될때 결정해야한다.
 
-        .reactTo는 callback을 연결안함. 별개의 사건 처리다. (other입장에서 fireAndForgot)
-        .connectTo는 callback을 연결함. 동일한 사건처리로써, 연속적 반응으로 간다. (other입장에서 비동기)
+        .forkFrom는 callback을 연결안함. 별개의 사건 처리다. (other입장에서 fireAndForgot)
+        .concatTO는 callback을 연결함. 동일한 사건처리로써, 연속적 반응으로 간다. (other입장에서 비동기)
 
 
         .do = .load = .store 그냥 의미상 구분.  
@@ -74,67 +75,185 @@ describe '?', ()->
         때가 되면 배열에 대한 Reduce를 하여 넘기면 된다. 
         Reducer (timingSelector, ReductionFn, ResetFn)
 
-        .reduce thisReducer = (thisReducer, cur, call_context)->
+        .reduce thisReducer = (thisReducer, cur, execute_context)->
           의문 1. Drop/Next를 하나의 함수로 처리가능한가? 넘길값이 뭔지 몰라서 불가.
-          만약 call_context를 받으면..? call_context.reduced()로 깔끔히 처리가능.. call_context.next() 도 괜찮은 선택일듯.
+          만약 execute_context를 받으면..? execute_context.reduced()로 깔끔히 처리가능.. execute_context.next() 도 괜찮은 선택일듯.
 
         쉽게 만들 방법이 있을까? 없을듯. 
           시간 관련인데 불확실한 미래를 고려하는가? 아닌가?는 복잡.  timeout + condition이면 되지 않나..?
           reduceFn은 정형화 가능. Reset은 어떨지 모르겠음. setEmpty를 전제로한다면...
   
       input.user_list 식으로 배열을 받을테고, 이에 대한 처리는? 
-        chain은 시작점은 1개 끝점은 여러개로 본다. callback 있을수도 없을수도.. exit_status가 프로미스라서...output은 필수네.
-        SIMD(단일명령 다중 데이터)는 고려해야겠는데..?
-          이거는 또 순차적 Ser과 병렬적 Par이 있고.. 
 
+      SIMD(단일명령 다중 데이터)는 고려해야겠는데..?
+        이거는 또 순차적 Ser과 병렬적 Par이 있고.. 
   
-      
+
+        
 
       SISD 
       SIMD - ser?par? 이거면 적절하겠네.. 
       MISD - 용처가??
       MIMD - async + await 로 해결보는게....
 
-      SIMD면 충분하고, 타이밍 제어는 observer가 수행할수 있다.
-      다만. 정적인 Observer가 끝났는지를 어떻게 알 것인가? 
-        > 먼가 RxJS비슷..? 그런것 같지는 않네...
+      SIMD면 충분하고, 타이밍 제어는 Enforcer 수행할수 있다.
+      다만. Enforcer가 끝났는지를 어떻게 알 것인가?  이건 Enforcer가 알아서...
 
+  
+      Enforcer, 데이터를 밀어 넣는 장치
+        When & What이 핵심인데 다양하니까 정형화는 무리
+        다양성을 허용하면 많은 문제 해결가능
+
+      when ...
+        1. 생길때마다. 
+        2. 변경될때마다. 
+        3. 주기적으로..? interval? callback chain? 
+        4. 동시 병렬?, 
+        4.1. 병렬의 갯수 제한 = 쓰래드 수 제한
+      What ...
+
+      How - 이건 Chain이 하는것이다.
+
+      따지자면 끝도 없고, 니맘대로다.
+      고려할것 enforcer와 외부와의 관계.
+      외부는 What Source, When Source?? 
+        데이터의 소스는 분명한데 When이 소스가 있나..? 있네. 뭐가됫든 직접만들기도, 위임하기도 가능.
+
+      의문1. enforcer는 callback을 수신 한다?안한다? 
+        Flow 컨트롤을 하려면 수신을 해야맞다. 다만 Error까지 온다.
+        Error는 Enforcer가 처리해야하는가? 
+        항상 UncaughtException이 문제지.. 캐치되면 요청 맥락에서 처리가 되니까..
+
+        enforcer.event, interval, cron의 경우, Callback이 의미가 없다. event는 wait안하니까.
+        > 처리중엔 처리하지 않는다? 이건 Reducer나 Filter로 되지 않나? 이건 연산특징인가?발생 특징인가?
+          처리 상태에 대하여 처리 여부를 결정하니, 연산특징. 2번 할 필요가 없는 연산
+      
+        Enforcer = chain with self trigger가 되어 버려서 의미없는 논의 
+        chain이 다른 체인(=Enforcer)에 편입될지 말지는 concatTo, forkFrom 구분하여 3rd의 판단에 맞김
+        > 이거 틀렸음. Enforcer는 모듈이고, Timing 제어권이 있어서 Enforcer가 Callbak수신여부를 판단해야함.
+
+      
+      event 'end', Enfocer가 끝을 인식 했을떄, 무한 스트림은 안생긴다. ex> EventStream
+      Enforcer는 능동체라서 'drain'은 없을듯하다. 
+
+      체인은  WritableStream과 유사.
+        > 그러나 체인은 데이터를 보관하지 않는다. 흘려 보낸다.
+      Enforcer는 ReaderbleStream과 유사하다.
+        > 데이터보관을 해도 되고, 정지도 될텐데..?, 파이프와 다르바 없는 체인.
+
+
+      DataBox를 놓아야하는가? 
+        > 이벤트 - 크기를 알수없는 언제 발생할지 모르는 박스 
+        > 스트림 - 크기를 알수도 모를수도 있는 언제 발생할지 모르는
+        > iterater - 크기를 알수도 모를수도? 
+        > 
+
+      
       t가 메시지를 뿌리는 시점이 중요하다. 
       hc()가 함수 체인이 완성되는 시점을 알수없다. 
 
-      t = hc.trigger.of messages... 
-      hc().reactTo(t).do (cur)-> ....
-      t.start() # 이건 스트림인가?? 
-        .finished.then ()-> 
+      forcer = hc.enforcer.ser messages... 
+      hc().drivenBy(forcer).do (cur)-> ....
 
+      hc().drivenBy hc.enforcer.sensor (forcer가 끝인지?) 현상태 + 상태의 변화 == 기대값
+        .do (cur)->
+          message에 대한 모든 처리가 끝났으니 후처리
 
+      일단 저렇게 해도 굴러는 가겠는데.. 더 간단하게..
+      결국 감시 대상이, 목표 상태가 되면 호출하는 것이다.       
+        check Timing, 
+        Expect Value == 감시 대상 getter()  => CheckChain
+        Prev Value != 감시 대상 getter()  => CheckChain
+
+        Enforcer = Enforcer + filter도 가능하겠네.. 
+
+        hc.enforcer()
+          .asap()
+          .event src, 'event_name'
+          .filter 
+
+        hc()
+          .drivenBy hc.timing.asap()
+          .drivenBy hc.timing.event src, 'event_name'
+
+        체인이 스스로 능동체가 되면 enforcer 로 변한다.
+        피동 반응 vs 능동반응? 능동반은 == Pull? PullWhen? -> 피동 반응? 
+
+      hc.enforcer.ser는 어떻게 되냐?
+        hc()
+          .drivenBy hc.timing.ser message...
+          .connectTo hc.timing.ser message...
+        응????
+        ser처리를 하려면 필히 callback을 받아야한다. 
+
+        꼬였다.. drivenBy를 아래처럼 코딩하면 안됨.
+          drivenBy = (enforcer)->
+            enforcer.do (cur)-> thisChain cur
+    
+        아래 처럼 되어서, Callback여부가 enforcer 책임하에 가야함.
+          drivenBy = (enforcer)->
+            enforcer.attach thisChain
+
+          
+          enforcer = (opt)->
+            self = 
+              attach: (chain)->
+              activate: (cur)->
+                self.chains. cur
+                또는
+                self.chains. cur, calback?
+            return self
+        
+          타이밍 제어를 위해서는 Enforcer가 알아함.
+
+      Enforcer is a EventEmitter 'end'
+      Enforcer is not Function - 실행불가. 실행시 해야할 작업 불명
+      Enforcer is a Object
+
+      Enforcer has call Reactors, 이를 위한 판단 로직, Function call의 진입점(~트리거)을 가짐.
+              is 다수의 H-Chain이 모인 구조물 => 모듈 
+              모듈 내부 데이터도 포함가능하고...
+              특별한 규격을 가진 모듈
+
+      Chain은 애초에 Module/data/Model ---------> Moudle/Data/Model을 하려고 만든거다. 
+      Chain의 시작점인 Enforce는 어찌보면 Module인게 당연...
+  
+      Enforcer는 
+        최소한 Timing(함수 실행)을 가져야한다. 
+          즉 enforcer.event 처럼 최소한것 것만 가져도 enforcer다.
+        연결된 모든 Chain = Function을 호출해줘야한다. 
+          callback을 수신하든 안하든 자유다.
+
+        데이터 가공 루틴을 가질수도 있다. 
+        입력 데이터를 가지고 시작해도 되고, 어디서 퍼와도 된다.
+        버퍼를 하던 drop을 하던 자유다.
+
+      Enforcer = 외부로 드러는것..?
+        addChain : #  AddFunction.
+        Chain_list
+        Name? 
+        event, 'end'
+ 
     ###
-
     # chain = hc.create()
+
     chain = hc() # return function 
       .uncaughtException (err)-> # Error를 수신받을 callback이 없을때 처리함. ex> observer나 다른 체인으로부터 받을떄  
-      .reactTo hc.trigger.of messages... # Input Queue에 넣고 시작함. messages를 하나씩 처리하도록 함 Serial? Parallel? 기본은 직렬, 하나씩 끝내자
-      .reactTo hc.trigger.par messages... # 메시지를 동시에 뿌려버린다.
-      .reactTo hc.trigger.event src, 'event_name'
-      # src.on 'event_name', (cur)-> thisChain cur
-      ###
-      (src, event_name)->
-        src.on event_name, (evt)->
-          
-      ###
-      .reactTo hc.trigger.interval 1000 # 1000 ms 마다 발생
-      # setIntervale ()->{thisChain()}, 1000 
-      .reactTo hc.trigger.puller src, 'path', chk_interval
-      # setIntervale ()->{thisChain() if (_.get(src, 'path') is chagned) }, chk_interval 
-      ###
-        reactTo = (trigger)->
-          trigger.attachChain thisChain 
+      .drivenBy hc.enforcer.ser messages... # Input Queue에 넣고 시작함. messages를 하나씩 처리하도록 함 Serial? Parallel? 기본은 직렬, 하나씩 끝내자
+      .drivenBy hc.enforcer.par messages... # 메시지를 동시에 뿌려버린다.
+      .drivenBy hc.enforcer.event src, 'event_name' 
+      # .event src, 'event_name' 도 가능하다. 짧고 직접적. 3단어 짧다 drivenBy hc.enforcer  
+      # 늘 그렇듯이 간접층이 없으면, 여러 문제를 해결하기가 어렵지..
+      # 게다가 참 다양한 enforcer형태가 있을텐데, 다 구현해넣기도 무리. 짧게 쓸방법은..?
+      # .drivenBy enforcer.event src, 'event_name'
+      # enforcer.event(src, 'event_name').drive chain
+      .drivenBy hc.enforcer.interval 1000 # 1000 ms 마다 발생 
+      .drivenBy hc.enforcer.puller src, 'path', chk_interval 
 
+      .drivenBy hc.enforcer.stream Stream # Stream은 Chain과는 달리, 자체적인 버퍼를 가진다. 제때 못읽는다고 데이터가 사라지지는 않는다.
 
-      ###
-      .reactTo Stream # Stream은 Chain과는 달리, 자체적인 버퍼를 가진다. 제때 못읽는다고 데이터가 사라지지는 않는다.
-      .reactTo otherChain #  otherChain.do (cur)-> thisChain cur
-      .connectTo otherChain # otherChain.do (cur)-> thisChain cur, @async()
+      .forkFrom otherChain #  otherChain.do (cur)-> thisChain cur
+      .concatTo otherChain # otherChain.do (cur)-> thisChain cur, @async()
       # .mapTo {} # 고정적인 값으로 변경 _.isFunction 코스트를 물기 그렇다?? 아니, Chain을 구성할때 1번 지불하면..? 그래도 내부적으로는 다 있다는 소리네..
       .load (cur)-> # 데이터를 읽는다...? do랑 뭐가 다르냐..?  
         cur.var = getDataFromCache()
@@ -165,7 +284,7 @@ describe '?', ()->
       #   setTimeout go, 10
       .delayWhen 10, _.isObject
 
-      .timeout 1000 * 10  # 10초후에는 Error Timeout.  call_context.clearTimeout()으로 해제 됨 or 작업이 끝나면 됨.
+      .timeout 1000 * 10  # 10초후에는 Error Timeout.  execute_context.clearTimeout()으로 해제 됨 or 작업이 끝나면 됨.
       .await 'name_of_job'
       .wait (go)->
         @wait('load').then go
@@ -192,6 +311,54 @@ describe '?', ()->
       .filter hc.filter.debounceCount 10
 
       # reduce : decide continue with Something or not
+
+      .reduce hc.reducer (thisReducer, cur, execute_context)->
+        thisReducer.acc.push cur 
+        if thisReducer.acc.length > 3
+          chunk = thisReducer.acc
+          thisReducer.acc = [] # thisReducer.reset
+          execute_context.next chunk
+        else 
+          thisReducer.prev_execute_context.reduced()
+          thisReducer.prev_execute_context = execute_context
+        ###
+          여기에 더해서 타임아웃되면 방출?
+        ###
+
+
+      .reducer hc.reducer 
+        time_slice: 1000 # 최대 1000ms마다 방출
+        reduce: (acc)-> return reduced_data
+        needFlush: (acc)-> return true or false 
+
+      hc.reducer = (opt)->
+        return thisReducer = (cur, execute_context)->
+          thisReducer.acc.push cur
+          if thisReducer.pending_context 
+            thisReducer.pending_context.reduced()
+          
+          thisReducer.pending_context = execute_context
+
+          _tout = ()->
+            thisReducer.tid = null
+            data = opt.reduce thisReducer.acc
+            thisReducer.acc = []
+            thisReducer.pending_context.next data 
+
+          if opt.needFlush()
+            _tout()
+          else
+            unless thisReducer.tid
+              thisReducer.tid = setTimeout _tout, opt.time_slice
+      ###
+        timeout + condition로 방출 시점을 결정
+        시점이 되면 ReduceFn으로 누적된 데이터를 줄임
+
+        시간 관련인데 불확실한 미래를 고려하는가? 아닌가?는 복잡.  timeout + condition이면 되지 않나..?
+        reduceFn은 정형화 가능. Reset은 어떨지 모르겠음. setEmpty를 전제로한다면...
+      ###
+
+
       .reduce hc.reducer.object (reducer, cur, next)->
         reducer.cur = if reducer.cur? then reducer.cur * cur else cur 
         next reducer.cur if reducer.cur > 1000
@@ -225,7 +392,7 @@ describe '?', ()->
 
 
     data = 1
-    chain data, callback #  fn data, callback = (error, call_context)->
+    chain data, callback #  fn data, callback = (error, execute_context)->
     # 기본적으로 Error를 callback 에 돌려주도록 함
     # ErrorBack이자 done의 의미로 사용
 
