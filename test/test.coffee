@@ -124,7 +124,7 @@ describe '?', ()->
         Error는 Enforcer가 처리해야하는가? 
         항상 UncaughtException이 문제지.. 캐치되면 요청 맥락에서 처리가 되니까..
 
-        enforcer.event, interval, cron의 경우, Callback이 의미가 없다. event는 wait안하니까.
+        hook.event, interval, cron의 경우, Callback이 의미가 없다. event는 wait안하니까.
         > 처리중엔 처리하지 않는다? 이건 Reducer나 Filter로 되지 않나? 이건 연산특징인가?발생 특징인가?
           처리 상태에 대하여 처리 여부를 결정하니, 연산특징. 2번 할 필요가 없는 연산
       
@@ -152,10 +152,10 @@ describe '?', ()->
       t가 메시지를 뿌리는 시점이 중요하다. 
       hc()가 함수 체인이 완성되는 시점을 알수없다. 
 
-      forcer = hc.enforcer.ser messages... 
+      forcer = hc.hook.ser messages... 
       hc().reactTo(forcer).do (cur)-> ....
 
-      hc().reactTo hc.enforcer.sensor (forcer가 끝인지?) 현상태 + 상태의 변화 == 기대값
+      hc().reactTo hc.hook.sensor (forcer가 끝인지?) 현상태 + 상태의 변화 == 기대값
         .do (cur)->
           message에 대한 모든 처리가 끝났으니 후처리
 
@@ -179,7 +179,7 @@ describe '?', ()->
         체인이 스스로 능동체가 되면 enforcer 로 변한다.
         피동 반응 vs 능동반응? 능동반은 == Pull? PullWhen? -> 피동 반응? 
 
-      hc.enforcer.ser는 어떻게 되냐?
+      hc.hook.ser는 어떻게 되냐?
         hc()
           .reactTo hc.timing.ser message...
           .connectTo hc.timing.ser message...
@@ -188,11 +188,11 @@ describe '?', ()->
 
         꼬였다.. reactTo를 아래처럼 코딩하면 안됨.
           reactTo = (enforcer)->
-            enforcer.do (cur)-> thisChain cur
+            hook.do (cur)-> thisChain cur
     
         아래 처럼 되어서, Callback여부가 enforcer 책임하에 가야함.
           reactTo = (enforcer)->
-            enforcer.attach thisChain
+            hook.attach thisChain
 
           
           enforcer = (opt)->
@@ -220,7 +220,7 @@ describe '?', ()->
   
       Enforcer는 
         최소한 Timing(함수 실행)을 가져야한다. 
-          즉 enforcer.event 처럼 최소한것 것만 가져도 enforcer다.
+          즉 hook.event 처럼 최소한것 것만 가져도 enforcer다.
         연결된 모든 Chain = Function을 호출해줘야한다. 
           callback을 수신하든 안하든 자유다.
 
@@ -243,14 +243,14 @@ describe '?', ()->
 
     chain = hc() # return function 
       .uncaughtException (err)-> # Error를 수신받을 callback이 없을때 처리함. ex> observer나 다른 체인으로부터 받을떄  
-      .reactTo hc.enforcer.ser messages... # Input Queue에 넣고 시작함. messages를 하나씩 처리하도록 함 Serial? Parallel? 기본은 직렬, 하나씩 끝내자
-      .reactTo hc.enforcer.par messages... # 메시지를 동시에 뿌려버린다.
-      .reactTo hc.enforcer.event src, 'event_name' 
+      .reactTo hc.hook.ser messages... # Input Queue에 넣고 시작함. messages를 하나씩 처리하도록 함 Serial? Parallel? 기본은 직렬, 하나씩 끝내자
+      .reactTo hc.hook.par messages... # 메시지를 동시에 뿌려버린다.
+      .reactTo hc.hook.event src, 'event_name' 
       # .event src, 'event_name' 도 가능하다. 짧고 직접적. 3단어 짧다 reactTo hc.enforcer  
       # 늘 그렇듯이 간접층이 없으면, 여러 문제를 해결하기가 어렵지..
       # 게다가 참 다양한 enforcer형태가 있을텐데, 다 구현해넣기도 무리. 짧게 쓸방법은..?
-      # .reactTo enforcer.event src, 'event_name'
-      # enforcer.event(src, 'event_name').drive chain
+      # .reactTo hook.event src, 'event_name'
+      # hook.event(src, 'event_name').drive chain
       .reactTo hc.actor.interval 1000 # 1000 ms 마다 발생 
       .reactTo hc.actor.puller src, 'path', chk_interval 
 
