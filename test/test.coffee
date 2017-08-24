@@ -153,9 +153,9 @@ describe '?', ()->
       hc()가 함수 체인이 완성되는 시점을 알수없다. 
 
       forcer = hc.enforcer.ser messages... 
-      hc().drivenBy(forcer).do (cur)-> ....
+      hc().reactTo(forcer).do (cur)-> ....
 
-      hc().drivenBy hc.enforcer.sensor (forcer가 끝인지?) 현상태 + 상태의 변화 == 기대값
+      hc().reactTo hc.enforcer.sensor (forcer가 끝인지?) 현상태 + 상태의 변화 == 기대값
         .do (cur)->
           message에 대한 모든 처리가 끝났으니 후처리
 
@@ -173,25 +173,25 @@ describe '?', ()->
           .filter 
 
         hc()
-          .drivenBy hc.timing.asap()
-          .drivenBy hc.timing.event src, 'event_name'
+          .reactTo hc.timing.asap()
+          .reactTo hc.timing.event src, 'event_name'
 
         체인이 스스로 능동체가 되면 enforcer 로 변한다.
         피동 반응 vs 능동반응? 능동반은 == Pull? PullWhen? -> 피동 반응? 
 
       hc.enforcer.ser는 어떻게 되냐?
         hc()
-          .drivenBy hc.timing.ser message...
+          .reactTo hc.timing.ser message...
           .connectTo hc.timing.ser message...
         응????
         ser처리를 하려면 필히 callback을 받아야한다. 
 
-        꼬였다.. drivenBy를 아래처럼 코딩하면 안됨.
-          drivenBy = (enforcer)->
+        꼬였다.. reactTo를 아래처럼 코딩하면 안됨.
+          reactTo = (enforcer)->
             enforcer.do (cur)-> thisChain cur
     
         아래 처럼 되어서, Callback여부가 enforcer 책임하에 가야함.
-          drivenBy = (enforcer)->
+          reactTo = (enforcer)->
             enforcer.attach thisChain
 
           
@@ -233,26 +233,30 @@ describe '?', ()->
         Chain_list
         Name? 
         event, 'end'
- 
+  
+      Enforcer는 너무 직접적인가..? 
+      React에 초점을 두는게 아니라 Drive에 초점이 가니까..
+      React to Something??? Something!!!
+      
     ###
     # chain = hc.create()
 
     chain = hc() # return function 
       .uncaughtException (err)-> # Error를 수신받을 callback이 없을때 처리함. ex> observer나 다른 체인으로부터 받을떄  
-      .drivenBy hc.enforcer.ser messages... # Input Queue에 넣고 시작함. messages를 하나씩 처리하도록 함 Serial? Parallel? 기본은 직렬, 하나씩 끝내자
-      .drivenBy hc.enforcer.par messages... # 메시지를 동시에 뿌려버린다.
-      .drivenBy hc.enforcer.event src, 'event_name' 
-      # .event src, 'event_name' 도 가능하다. 짧고 직접적. 3단어 짧다 drivenBy hc.enforcer  
+      .reactTo hc.enforcer.ser messages... # Input Queue에 넣고 시작함. messages를 하나씩 처리하도록 함 Serial? Parallel? 기본은 직렬, 하나씩 끝내자
+      .reactTo hc.enforcer.par messages... # 메시지를 동시에 뿌려버린다.
+      .reactTo hc.enforcer.event src, 'event_name' 
+      # .event src, 'event_name' 도 가능하다. 짧고 직접적. 3단어 짧다 reactTo hc.enforcer  
       # 늘 그렇듯이 간접층이 없으면, 여러 문제를 해결하기가 어렵지..
       # 게다가 참 다양한 enforcer형태가 있을텐데, 다 구현해넣기도 무리. 짧게 쓸방법은..?
-      # .drivenBy enforcer.event src, 'event_name'
+      # .reactTo enforcer.event src, 'event_name'
       # enforcer.event(src, 'event_name').drive chain
-      .drivenBy hc.enforcer.interval 1000 # 1000 ms 마다 발생 
-      .drivenBy hc.enforcer.puller src, 'path', chk_interval 
+      .reactTo hc.actor.interval 1000 # 1000 ms 마다 발생 
+      .reactTo hc.actor.puller src, 'path', chk_interval 
 
-      .drivenBy hc.enforcer.stream Stream # Stream은 Chain과는 달리, 자체적인 버퍼를 가진다. 제때 못읽는다고 데이터가 사라지지는 않는다.
+      .reactTo hc.adapter.stream Stream # Stream은 Chain과는 달리, 자체적인 버퍼를 가진다. 제때 못읽는다고 데이터가 사라지지는 않는다.
 
-      .forkFrom otherChain #  otherChain.do (cur)-> thisChain cur
+      .forkFrom otherChain # otherChain.do (cur)-> thisChain cur
       .concatTo otherChain # otherChain.do (cur)-> thisChain cur, @async()
       # .mapTo {} # 고정적인 값으로 변경 _.isFunction 코스트를 물기 그렇다?? 아니, Chain을 구성할때 1번 지불하면..? 그래도 내부적으로는 다 있다는 소리네..
       .load (cur)-> # 데이터를 읽는다...? do랑 뭐가 다르냐..?  
