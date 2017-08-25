@@ -16,19 +16,33 @@ describe '?', ()->
       체인에 대한 호출은 execute_context 를 만든다
       execute_context =  # created by hc()(input, callback)
         input: initial input 
+        cur: # 처리중인 현재 값
         callback: (err, feedback, execute_context)-> 
           if _callback
             _callback err, feedback, execute_context 
         output: null
+        exit_status:  
+          undefined: 아직 안끝남  
+          error - 에러가 발생 
+          filtered - filter 되어 끝남
+          reduced - reduce 되어 끝남
+          finished - 모든 연산 끝남
+        storage: {}  # promise와 callbacked async 는 여기 저장됨.
+        getItem
+        setItem
+        removeItem
+        items
+
+        promises: 
+          all: []
+          user_defined_group_name: []
         asyncTasks: 
           task_id: [error, args...]
           task_id: [error, args...]
-        exit_status:  
-            undefined: 아직 안끝남  
-            error - 에러가 발생 
-            filtered - filter 되어 끝남
-            reduced - reduce 되어 끝남
-            finished - 모든 연산 끝남
+
+
+
+            
 
       OtherChain과 의존..? 
         > 다른 체인이 취급한 데이터에 반응하는 것...? 음 모듈 구조를 생각해야겠다.
@@ -336,20 +350,110 @@ describe '?', ()->
         callAsync done.catch (err)->
           done null
           # @get ? @result 'name_of_job'으로 처리.? 
-      .await (cur, result_dictionary)->  # all 
-      .await 'async_job_name', (cur, result)->  # a job
-      .awaitGroup 'gorup_name', (cur, result_dictionary)-> 
-      .do (cur)->
-        @async
 
-      .makePromise "promise_name" ()->
+      ### 
+        .await (cur, result_dictionary)->  # all 
+        .await 'async_job_name', (cur, result)->  # a job
+        .awaitGroup 'gorup_name', (cur, result_dictionary)-> 
+
+        .await 가 함수화 되면.. 이건 .do .map .reduce .filter .if등등 뭐가 되어야하지..?  
+        결국 조합의 숫자가 폭주해서 제어하기 힘들게된다. 
+        대기 이후에는 값을 간단히 꺼낼 방법을 쓰자. 
+        어차피 "이름" 없이 엑세스도 안되는거..      
+
+        생각 2. .await와 .waitPromise의 차이는..?
+        async 호출을 한다고 2번 Callback을 해도 되는것도 아니고,
+        대기 루틴 처리도 promise가 제공하는게 신뢰도 있기도 하다. 
+        통합 결정. 
+
+      ###
+      .promise "promise_name" ()->
         return new Promise()
 
-      .waitPromiseAll (cur, values_dictionary)-> # all    
-      .waitPromise 'name', (cur, value)->  # not all
-      .waitPromiseGroup'group_name', (cur, values_dictionary)-> # not all
+      .wait() # all 
+      .wait 'async_job_name',
+      .waitGroup 'gorup_name'
+      .do (cur)->
+        {async_job_name, promise_name} = @items()
+
+      # .waitPromiseAll (cur, values_dictionary)-> # all    
+      # .waitPromise 'name', (cur, value)->  # not all
+      # .waitPromiseGroup'group_name', (cur, values_dictionary)-> # not all
 
     chain = hc() 
+      ###
+        .if .else .unless 
+        .for .while .until 
+        .goto 
+        .break
+        .continue.
+
+        일단 보통의 프로그램에서 Statement는 Sub Statement를 가지고 scope는 공유한다
+
+        currentExecute와  .if의 Execute의 관계는...? 
+          1. 별개의 함수. - 구현이 용이하나 맥락이 불편.
+          2. 연속된 문. - 구현어려움..
+
+        맥락의 문제... if를 수행하여 현재 cur 가 바뀌어야하는가? 
+        만약 그렇다면 map안에서 if처리하면 되지 않는가? 
+          -> 비동기가 아니면 이상없음.
+        
+        비동기 처리를 한다면 문제???
+
+        chain이 유지하는 데이터는 1개라는 관점과 비동기 작업의 관리 원칙에서 보자.
+        비동기 작업 이후에 if든 뭐든 한다면?? 큰 문제가 없다. .aync > .wait > .do/.map 순
+        그렇다면 반대로 if로 인해 비동기 작업이 발생한다면? 
+        즉 비동기 작업을 건너 뛸것이라면..? 
+        .... 흐름을 매끄럽게 하기 위해서 일단 .async하고 바로 callback해야 일관성이.. 
+        후방에서 앞선 비동기 작업의 진행 YN을 판단하는 것은 무리수다.
+        결국 무조건 있다고 가정. 앞에서 맞춰야하고, 
+          !! 그렇다면 조건부 비동기 실행은 없다. !!
+
+        for/while도 동기 실행은 문제 없고
+        비동기 실행은..? 
+          음 맥락 데이터가 문제시 되기는 하겠는데...
+          원래 closure로 처리를 했지...
+          함수 자체가 체인화 되어서 클로져가 원활하지가 않아. 함수적이게 되긴하나.. 
+          cur와 storage가 분리되어서 좀 피곤.
+
+        cur와 feedback의 관계
+          feedback은 함수의 콜백으로 호출자에게 되돌아간다. 
+          함수의 리턴은 비동기인 순간 의미가 없다. 
+          last cur == feedback인가? -> 체인 연결을 하면 안된다. 연결되면 feedback이 달라짐. 
+          
+          게다가 다중 끝점 구조를 하려는 것이니까,
+          Feedback은 특별한(named endPoint)로써 처리가 필요할수있고 -> 명확해야함          
+
+        모든 비동기는 일단 결과를 저장한 뒤에,
+        불러다가 동기처리한다. 
+        
+        그러면 문제는 결과 저장소에 엑세스가 되는가?
+        그리고 다수를 시작시킬수 있는가?
+
+        SIMD 만 고려.. 
+        MIxx은 이미 명령문이 지저분하게 여러개라 루틴상 의미없다.
+
+        다수의 비동기 즉 SIMD를 1 error시 끝내버리는게 적절한가? 
+        적절하다. error는 무조건 최단시간에 전파 할것. 오히려 그렇게 해야한다. 
+
+        이를 어떻게 처리할까?
+        Chain은 SISD고 
+        SIMD는 generator를 이용할껀데....
+
+        .async 'name', (cur, done)->
+          newGen 
+          hc()
+            .react newGen
+
+          newGen.start (err)-> 
+          
+            done err
+        .do (cur)->
+          {name} = items() 
+
+
+
+      ###
       .if ((cur)-> cur > 10), 
         hc()
         .map (cur)->
