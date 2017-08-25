@@ -16,7 +16,9 @@ describe '?', ()->
       체인에 대한 호출은 execute_context 를 만든다
       execute_context =  # created by hc()(input, callback)
         input: initial input 
-        callback: (args...)-> _callback args... if _callback
+        callback: (err, feedback, execute_context)-> 
+          if _callback
+            _callback err, feedback, execute_context 
         output: null
         asyncTasks: 
           task_id: [error, args...]
@@ -243,9 +245,51 @@ describe '?', ()->
 
     chain = hc() # return function 
       .uncaughtException (err)-> # Error를 수신받을 callback이 없을때 처리함. ex> observer나 다른 체인으로부터 받을떄  
-      .reactTo hc.hook.ser messages... # Input Queue에 넣고 시작함. messages를 하나씩 처리하도록 함 Serial? Parallel? 기본은 직렬, 하나씩 끝내자
-      .reactTo hc.hook.par messages... # 메시지를 동시에 뿌려버린다.
+      .reactTo hc.hook.of hc.generator.ser messages... # Input Queue에 넣고 시작함. messages를 하나씩 처리하도록 함 Serial? Parallel? 기본은 직렬, 하나씩 끝내자
+      .reactTo hc.hook.of hc.generator.par messages... # 메시지를 동시에 뿌려버린다.
       .reactTo hc.hook.event src, 'event_name' 
+      .reactTo hc.hook.promise new Promise 
+      .reactTo hc.hook.callback (cb)-> fs.open '', cb
+      ###
+      reactTo = (hook)->
+        hook.on thisChain
+      stopReactTo = (hook)->
+        hook.off thisChain
+      hook.of = (opt, target)->
+        unless target 
+          target = opt
+          opt = 
+            unsetter : 'removeChain'
+            setter : 'addChain'
+        return hook = 
+          off: (a_chain)->
+            generator[opt.unsetter] a_chain
+
+          on : (a_chain)->
+            generator[opt.setter] a_chain
+      hook.event = (src, e_name)->
+        _trigger = (evt)-> a_chain evt
+        return hook =
+          on: (a_chain)->
+            src.on e_name, _trigger
+          off: ()->
+            src.off e_name, _trigger
+      hook.promise = (promise)->
+        return hook =
+          on: (a_chain)->
+            promise.then (value)-> a_chain value
+          off: ()-> throw new Error 
+      hook.callback = (fn)->
+        return hook =
+          on: (a_chain)->
+            fn (err, args...)-> 
+              unless err
+                a_chain args...
+              else 
+                a_chain.throwIn err
+
+
+      ###
       # .event src, 'event_name' 도 가능하다. 짧고 직접적. 3단어 짧다 reactTo hc.enforcer  
       # 늘 그렇듯이 간접층이 없으면, 여러 문제를 해결하기가 어렵지..
       # 게다가 참 다양한 enforcer형태가 있을텐데, 다 구현해넣기도 무리. 짧게 쓸방법은..?
@@ -274,25 +318,43 @@ describe '?', ()->
       #   done null
       # .mapAsync (cur, done)->
       #   done null
-      .do (cur)->
-        sync = @async 'name_of_job' # this === call context { input: cur, callback: }. this created by hc()(input, callback)
-        callAsync sync.err (err)->
-          sync null
-          # @get ? @result 'name_of_job'으로 처리.? 
 
       .delay 10
       # .wait (go)-> setTimeout go, 10
-      .delayWhen 10, (cur)-> cur.one > 10
+      .delayIf 10, (cur)-> cur.one > 10
       # .wait (go)-> 
       #   return go() if cur.one > 0
       #   setTimeout go, 10
-      .delayWhen 10, _.isObject
+      .delayIf 10, _.isObject
 
       .timeout 1000 * 10  # 10초후에는 Error Timeout.  execute_context.clearTimeout()으로 해제 됨 or 작업이 끝나면 됨.
-      .await 'name_of_job'
-      .wait (go)->
-        @wait('load').then go
 
+      .async 'async_job_name', (cur, done)->
+        # hc.tagging 'name_str', done
+        # hc.tagging {name: '', group: ['a','b']}, done 
+        # sync = @async 'name_of_job' # this === call context { input: cur, callback: }. this created by hc()(input, callback)
+        callAsync done.catch (err)->
+          done null
+          # @get ? @result 'name_of_job'으로 처리.? 
+      .await (cur, result_dictionary)->  # all 
+      .await 'async_job_name', (cur, result)->  # a job
+      .awaitGroup 'gorup_name', (cur, result_dictionary)-> 
+      .do (cur)->
+        @async
+
+      .makePromise "promise_name" ()->
+        return new Promise()
+
+      .waitPromiseAll (cur, values_dictionary)-> # all    
+      .waitPromise 'name', (cur, value)->  # not all
+      .waitPromiseGroup'group_name', (cur, values_dictionary)-> # not all
+
+    chain = hc() 
+      .if ((cur)-> cur > 10), 
+        hc()
+        .map (cur)->
+            cur + 1
+        .do (cur)-> 
       .do (cur)->
         return @callback null, 'ok' if cur > 10
 
@@ -330,11 +392,11 @@ describe '?', ()->
         ###
 
 
-      .reducer hc.reducer 
+      .reducer hc.reducer
         time_slice: 1000 # 최대 1000ms마다 방출
         reduce: (acc)-> return reduced_data
         needFlush: (acc)-> return true or false 
-
+      ###
       hc.reducer = (opt)->
         return thisReducer = (cur, execute_context)->
           thisReducer.acc.push cur
@@ -354,6 +416,7 @@ describe '?', ()->
           else
             unless thisReducer.tid
               thisReducer.tid = setTimeout _tout, opt.time_slice
+              ###
       ###
         timeout + condition로 방출 시점을 결정
         시점이 되면 ReduceFn으로 누적된 데이터를 줄임
@@ -363,37 +426,36 @@ describe '?', ()->
       ###
 
 
-      .reduce hc.reducer.object (reducer, cur, next)->
-        reducer.cur = if reducer.cur? then reducer.cur * cur else cur 
-        next reducer.cur if reducer.cur > 1000
-      .reduce hc.reducer.array (reducer, cur, next)->
-        reducer.push cur 
-        if reducer.length > 3 
-          chunk = reducer.get()
-          reducer.reset()
-          next chunk
+      # .reduce hc.reducer.object (reducer, cur, next)->
+      #   reducer.cur = if reducer.cur? then reducer.cur * cur else cur 
+      #   next reducer.cur if reducer.cur > 1000
+      # .reduce hc.reducer.array (reducer, cur, next)->
+      #   reducer.push cur 
+      #   if reducer.length > 3 
+      #     chunk = reducer.get()
+      #     reducer.reset()
+      #     next chunk
 
       # .call  otherChain  
       .do (cur)-> otherChain cur, @async() 
       # .fork otherChain  
       .do (cur)-> otherChain cur 
       # .sendToIf otherChain, (cur)-> cur > 10 
-      .gotoIf 'label', (cur)-> cur > 10
+      # .gotoIf 'label', (cur)-> cur > 10
       # .store 'path.for.variable', dest, 'dest.variable.path' # dest.variable.path거 함수인지, 변수인지? 셋팅 동작도 불명..
       # .store을 스트림 or 배열에 Push하는 것도 고민 해야한다. 
       # 이것도 .do랑 뭐가 다르냐.. 
-      .label 'label'
-      .loop 3 # === for 3
-      .loopback()
-      .loop (cur)-> cur < 10 #  < 10 이면 반복. === while
-      .loopback()
-      .catch (error, cur)->
+      # .label 'label'
+      # .loop 3 # === for 3
+      # .loopback()
+      # .loop (cur)-> cur < 10 #  < 10 이면 반복. === while
+      # .loopback()
+      .catch (cur, error)->
         # throw 를 하지 않으면 Error는 소멸함
-      .finally (err, cur)->   
+      .finally (cur, err)->   
         # err는 절대 소멸안함
-      .output (cur, output)->
-        output.cur = cur 
-
+      .feedback (cur, feedback_data)->
+        feedback_data.cur = cur 
 
     data = 1
     chain data, callback #  fn data, callback = (error, execute_context)->
