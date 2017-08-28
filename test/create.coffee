@@ -14,10 +14,13 @@ Features와, 테스트 시나리오
   처리 제어.filter 
   처리 합병 .reduce
   비동기 .async, .wait .makePromise
-  시간제어 .delay .timeout
+  시간제어 .delay .delayIf .timeout
   에러 제어 .catch .finally
   반환 제어 .feedback
 
+  .reactTo 
+  .concatTo
+  .forkFrom
 
 
 
@@ -155,3 +158,16 @@ describe 'error handling', ()->
 
 
 
+
+
+  
+# describe '시간제어 .delay .delayIf .timeout', ()-> 
+#   it 'when .timeout and over given time, then throw error', (done)-> 
+#     chain = hc()
+#       .timeout 1000
+#       .delay 15000
+
+#     chain 2, (err, feedback, execute_context)->
+#       expect(err).to.exist 
+#       expect(execute_context.exit_status).to.be.equal 'error'
+#       done()
