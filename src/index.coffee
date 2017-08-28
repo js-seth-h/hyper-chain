@@ -92,7 +92,7 @@ hyper_chain = ()->
         _done = (err, args...)->
           debug '_done', err, args...
           return _reject err if err 
-          _resolve err, args...
+          _resolve args
         return _done
 
 
@@ -174,7 +174,7 @@ hyper_chain = ()->
     internal_fns.push (exe_ctx)->
       p = exe_ctx.promises[name]
       p.then (value)->
-        exe_ctx.remember name, [null, value...]
+        exe_ctx.remember name, value
         exe_ctx.resume()
       p.catch (err)->
         exe_ctx.remember name, [err]
