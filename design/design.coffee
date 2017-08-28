@@ -454,11 +454,11 @@ describe '?', ()->
 
 
       ###
-      .if ((cur)-> cur > 10),
-        hc()
-        .map (cur)->
-            cur + 1
-        .do (cur)->
+      # .if ((cur)-> cur > 10),
+      #   hc()
+      #   .map (cur)->
+      #       cur + 1
+      #   .do (cur)->
       .do (cur)->
         return @callback null, 'ok' if cur > 10
 
@@ -566,8 +566,8 @@ describe '?', ()->
     # 기본적으로 Error를 callback 에 돌려주도록 함
     # ErrorBack이자 done의 의미로 사용
 
-    chain.close()
-    chain.open()
+    # chain.close()
+    # chain.open()
     ###
     if closed
       chain(data, callback). will imediatly call callback with error
