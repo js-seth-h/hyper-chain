@@ -93,29 +93,7 @@ hyper_chain = ()->
           debug '_done', err, args...
           return _reject err if err 
           _resolve args
-        return _done
-
-
-      # clearTimeout: ()->
-      #   clearTimeout exe_ctx.tid_of_timeout
-      #   exe_ctx.tid_of_timeout = undefined
-      # setTimeout: (ms)->
-      #   _dfn = ()->
-      #     exe_ctx.error = new Error 'Timeout'
-      #     ###
-      #       여기서 바로 resume하여 Error를 진행하는게맞겠다.
-      #       다만 기존의 처리 루틴은 어떻게 중지 시킬까?
-      #       2 줄기로 실행되면 안되니, 기존것을 중지시켜야한다.
-      #       1. 기존것을 대기후 진행. 
-      #       2. 기존것의 반환을 어떻게든 무시?
-
-      #       !! 기본적으로 흐름은 동기다
-      #       async도 동기처리후 반환이고 별개의처리가 되어서 done-wait가 짝이되어 수신한다.
-      #       따지자면, wait말고는 비동기, 작업에 대한 interrupt를 생각하지 않아도 될듯하다.
-      #       하지만 interrupt가 명확해야할 필요성도 있어보인다. 
-      #     ###
-      #     exe_ctx.interrupt()
-      #   exe_ctx.tid_of_timeout = setTimeout _dfn, ms
+        return _done 
 
     ASAP ()->
       exe_ctx.resume()
@@ -173,29 +151,17 @@ hyper_chain = ()->
   chain.wait = (name)->
     internal_fns.push (exe_ctx)->
       p = exe_ctx.promises[name]
-      p.then (value)->
+
+      _ok = (value)->
         exe_ctx.remember name, value
         exe_ctx.resume()
-      p.catch (err)->
-        exe_ctx.remember name, [err]
-        exe_ctx.resume()
-
+      _fail = (err)->
+        exe_ctx.error = err 
+        exe_ctx.resume() 
+      p.then _ok, _fail
     return chain
 
-
-  
-  # chain.clearTimeout = ()->
-  #   internal_fns.push (exe_ctx)->
-  #     exe_ctx.clearTimeout()
-  #     exe_ctx.resume()
-
-  # chain.timeout = (limited_duration)-> 
-  #   internal_fns.push (exe_ctx)->
-  #     exe_ctx.setTimeout limited_duration
-  #     exe_ctx.resume()
-  #   return chain
-
-
+ 
 
 
 

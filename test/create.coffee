@@ -13,8 +13,8 @@ Features와, 테스트 시나리오
   값제어 .do, .map
   처리 제어.filter 
   처리 합병 .reduce
-  비동기 .async, .wait .makePromise
-  시간제어 .delay .delayIf .timeout
+  비동기 .async, .wait .makePromise 
+  시간제어 .delay .delayIf 
   에러 제어 .catch .finally
   반환 제어 .feedback
 
@@ -165,7 +165,7 @@ describe '비동기 .async, .wait .makePromise', ()->
       .async 'test', (cur, a_done)->
         _dfn = ()->
           a_done null, 'async_return'
-        setTimeout _dfn, 1000
+        setTimeout _dfn, 200
       .map (cur)-> 2
       .wait 'test'
       .map (cur)->
@@ -177,15 +177,21 @@ describe '비동기 .async, .wait .makePromise', ()->
       expect(execute_context.cur).to.be.eql ['async_return']
       done()
 
+  it 'when .async & .wait but occur Error, then callback get error', (done)->
 
-  
-# describe '시간제어 .delay .delayIf .timeout', ()-> 
-#   it 'when .timeout and over given time, then throw error', (done)-> 
-#     chain = hc()
-#       .timeout 1000
-#       .delay 15000
+    chain = hc()
+      .map (cur)-> 0
+      .async 'test', (cur, a_done)->
+        _dfn = ()->
+          a_done new Error 'JUST'
+        setTimeout _dfn, 200
+      .map (cur)-> 2
+      .wait 'test'
+      .map (cur)->
+        {test} = @recall() 
+        return test
 
-#     chain 2, (err, feedback, execute_context)->
-#       expect(err).to.exist 
-#       expect(execute_context.exit_status).to.be.equal 'error'
-#       done()
+    chain null, (err, feedback, execute_context)-> 
+      expect(err).to.exist  
+      done()
+ 

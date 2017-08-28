@@ -341,7 +341,7 @@ describe '?', ()->
       #   setTimeout go, 10
       .delayIf 10, _.isObject
 
-      .timeout 1000 * 10  # 10초후에는 Error Timeout.  execute_context.clearTimeout()으로 해제 됨 or 작업이 끝나면 됨.
+      # .timeout 1000 * 10  # 10초후에는 Error Timeout.  execute_context.clearTimeout()으로 해제 됨 or 작업이 끝나면 됨.
 
       .async 'async_job_name', (cur, done)->
         # hc.tagging 'name_str', done
@@ -370,8 +370,15 @@ describe '?', ()->
       .promise "promise_name" ()->
         return new Promise()
 
+      ###
+        timeout은 wait시에만 (비동기 시에만)의미가 있으니까 합친다
+        timeout은 fullfil될 필요없고 다른건 되어야하고..그래서 구분해야겠다.
+      ###
       .wait() # all
-      .wait 'async_job_name',
+      .wait 1000 #  all + timeout 1000 
+      .wait 'async_job_name'
+      .wait 1000, 'async_job_name'
+      .wait 'async_job_name', 100
       .waitGroup 'gorup_name'
       .do (cur)->
         {async_job_name, promise_name} = @items()
