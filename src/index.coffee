@@ -12,6 +12,7 @@ hyper_chain = ()->
   internal_fns = []
   chain = (input, _callback)->
 
+    _KV_ = {}
     exe_ctx =
       input: input
       error: null
@@ -24,6 +25,8 @@ hyper_chain = ()->
         # filtered - filter 되어 끝남
         # reduced - reduce 되어 끝남
         # finished - 모든 연산 끝남
+ 
+      promises: {}
       next: (data)->
         exe_ctx.cur = data 
         exe_ctx.resume()
@@ -70,7 +73,29 @@ hyper_chain = ()->
           return unless _callback
           [cb, _callback] = [_callback, null]
           cb exe_ctx.error, exe_ctx.feedback, exe_ctx
-      
+        
+      recall: (name)->
+        return _KV_
+        # return _KV_[name]
+      remember: (name, value)->
+        _KV_[name] = value
+      createAsyncPoint :(name)->
+        _resolve = _reject = null
+        p = new Promise (resolve, reject)->
+          [_resolve, _reject] = [resolve, reject]
+          # @_setResolve = (v)-> resolve v
+          # @_setResolve = (v)-> reject v 
+          # debug 'inPromise', @_setReject, @_setResolve
+
+        debug 'createAsyncPoint', _resolve, _reject
+        exe_ctx.promises[name] = p
+        _done = (err, args...)->
+          debug '_done', err, args...
+          return _reject err if err 
+          _resolve err, args...
+        return _done
+
+
       # clearTimeout: ()->
       #   clearTimeout exe_ctx.tid_of_timeout
       #   exe_ctx.tid_of_timeout = undefined
@@ -99,20 +124,20 @@ hyper_chain = ()->
 
   chain.do = (fn)->
     internal_fns.push (exe_ctx)->
-      fn exe_ctx.cur 
+      fn.call exe_ctx, exe_ctx.cur 
       exe_ctx.resume()
     return chain
 
   chain.map = (fn)->
     internal_fns.push (exe_ctx)->
       # debug '.map', exe_ctx
-      new_cur = fn exe_ctx.cur 
+      new_cur = fn.call exe_ctx, exe_ctx.cur 
       exe_ctx.next new_cur
     return chain
 
   chain.filter = (fn)->
     internal_fns.push (exe_ctx)->
-      can_continue = fn exe_ctx.cur 
+      can_continue = fn.call exe_ctx, exe_ctx.cur 
       if can_continue
         exe_ctx.resume()
       else  
@@ -121,7 +146,7 @@ hyper_chain = ()->
 
   chain.catch = (fn)-> 
     _catcher = (exe_ctx)-> 
-      fn exe_ctx.err, exe_ctx.cur 
+      fn.call exe_ctx, exe_ctx.err, exe_ctx.cur 
       exe_ctx.error = null
       exe_ctx.resume() 
     _catcher.accept_error = true
@@ -131,13 +156,33 @@ hyper_chain = ()->
 
   chain.finally = (fn)-> 
     _catcher = (exe_ctx)-> 
-      fn exe_ctx.err, exe_ctx.cur 
+      fn.call exe_ctx, exe_ctx.err, exe_ctx.cur 
       # exe_ctx.error = null
       exe_ctx.resume() 
     _catcher.accept_error = true
     internal_fns.push _catcher
     return chain
  
+  chain.async = (name_group, fn)-> 
+    internal_fns.push (exe_ctx)->
+      a_done = exe_ctx.createAsyncPoint name_group
+      fn.call exe_ctx, exe_ctx.cur, a_done
+      exe_ctx.resume() 
+    return chain
+
+  chain.wait = (name)->
+    internal_fns.push (exe_ctx)->
+      p = exe_ctx.promises[name]
+      p.then (value)->
+        exe_ctx.remember name, [null, value...]
+        exe_ctx.resume()
+      p.catch (err)->
+        exe_ctx.remember name, [err]
+        exe_ctx.resume()
+
+    return chain
+
+
   
   # chain.clearTimeout = ()->
   #   internal_fns.push (exe_ctx)->

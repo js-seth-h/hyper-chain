@@ -157,7 +157,24 @@ describe 'error handling', ()->
 
 
 
+describe '비동기 .async, .wait .makePromise', ()->
+  it 'when .async & .wait, then read value from stroage', (done)->
 
+    chain = hc()
+      .map (cur)-> 1
+      .async 'test', (cur, a_done)->
+        _dfn = ()->
+          a_done null, 'async_return'
+        setTimeout _dfn, 1000
+      .wait 'test'
+      .map (cur)->
+        {test} = @recall() 
+        return test
+
+    chain 0, (err, feedback, execute_context)->
+      expect(err).to.not.exist
+      expect(execute_context.cur).to.be.equal 'async_return'
+      done()
 
 
   
