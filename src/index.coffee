@@ -226,9 +226,39 @@ hyper_chain = ()->
         exe_ctx.resume() 
     return chain
 
+  chain.reduce = (fn)-> 
+    internal_fns.push (exe_ctx)->
+      fn.call exe_ctx, exe_ctx.cur, exe_ctx 
+    return chain
+
   return chain
 
 
+hyper_chain.reducer = (opt)->
+  thisReducer = (cur, execute_context)->
+
+    if thisReducer.pending_context
+      thisReducer.pending_context.exit 'reduced' 
+    thisReducer.pending_context = execute_context
+
+    _tout = ()->
+      thisReducer.tid = null
+      reduced_data = opt.reduce thisReducer.acc
+      thisReducer.acc = []
+      
+      if thisReducer.pending_context
+        thisReducer.pending_context.next reduced_data
+        thisReducer.pending_context = null
+
+    thisReducer.acc.push cur
+    if opt.needFlush thisReducer.acc
+      _tout()
+    else
+      unless thisReducer.tid
+        thisReducer.tid = setTimeout _tout, opt.time_slice
+
+  thisReducer.acc = []
+  return thisReducer
 
 
 module.exports = exports = hyper_chain

@@ -16,13 +16,11 @@ Features와, 테스트 시나리오
   에러 제어 .catch .finally 
   반환 제어 .feedback 
   시간제어 .delay .delayIf 
-  
   처리 합병 .reduce
+
   .reactTo 
   .concatTo
-  .forkFrom
-
-
+  .forkFrom 
 
 ###
 describe 'chain is a function', ()->
@@ -248,42 +246,157 @@ describe '반환 제어 .feedback', ()->
       expect(feedback.send_back_str).to.be.eql 'to callback'
       done()
 
-
+time_accuracy = 5
 describe '시간제어 .delay .delayIf ', ()->
-  it 'when .delay. then take a time', (done)-> 
-    t_start = (new Date).getTime()
+  it 'when .delay. then take a time', (done)->  
     chain = hc()
       .delay 50
 
+    t_start = (new Date).getTime()
     chain null, (err, feedback, execute_context)-> 
       expect(err).to.not.exist
       t_end = (new Date).getTime()
       t_gap = t_end - t_start
-      expect(t_gap).be.least 50
+      expect(t_gap).be.least 50 - time_accuracy
       done()
 
   it 'when .delayIf & pass test. then take a time', (done)-> 
-    t_start = (new Date).getTime()
     chain = hc()
       .map (cur)-> 100
       .delayIf 50, (cur)-> cur > 50
 
+    t_start = (new Date).getTime()
     chain null, (err, feedback, execute_context)-> 
       expect(err).to.not.exist
       t_end = (new Date).getTime()
       t_gap = t_end - t_start
-      expect(t_gap).be.least 50
+      expect(t_gap).be.least 50 - time_accuracy
       done()
 
-  it 'when .delayIf & failed to pass test. then not take a time', (done)-> 
-    t_start = (new Date).getTime()
+  it 'when .delayIf & failed to pass test. then not take a time', (done)->  
     chain = hc()
       .map (cur)-> 100
       .delayIf 50, (cur)-> cur > 150
 
+    t_start = (new Date).getTime()
     chain null, (err, feedback, execute_context)-> 
       expect(err).to.not.exist
       t_end = (new Date).getTime()
       t_gap = t_end - t_start
-      expect(t_gap).be.below 50
+      expect(t_gap).be.below 50 - time_accuracy
+      done()
+
+describe '처리 합병 .reduce', ()->
+  
+  it 'when .reduce in 100 ms & call 1 time & not needFlush. then delayed and go', (done)-> 
+    chain = hc()
+      .reduce hc.reducer
+        time_slice: 100 # 최대 1000ms마다 방출
+        reduce: (acc)-> return acc
+        needFlush: (acc)-> return false
+      .do (cur)->
+        expect(cur).to.be.eql ['reduce']
+
+    t_start = (new Date).getTime()
+    chain 'reduce', (err, feedback, execute_context)-> 
+      expect(err).to.not.exist
+      t_end = (new Date).getTime()
+      t_gap = t_end - t_start
+      expect(t_gap).be.least 100 - time_accuracy
+      done()
+  it 'when .reduce in 100 ms & call 1 time needFlush. then go, but no delay', (done)-> 
+    chain = hc()
+      .reduce hc.reducer
+        time_slice: 100 # 최대 1000ms마다 방출
+        reduce: (acc)-> return acc
+        needFlush: (acc)-> return true
+      .do (cur)->
+        expect(cur).to.be.eql ['reduce']
+
+    t_start = (new Date).getTime()
+    chain 'reduce', (err, feedback, execute_context)-> 
+      expect(err).to.not.exist
+      t_end = (new Date).getTime()
+      t_gap = t_end - t_start
+      expect(t_gap).be.below 100 - time_accuracy
+      done()
+
+
+  it 'when .reduce in 100 ms & call 2 time and needFlush. then call1 getReducde. call2 go, but no delay', (done)-> 
+    chain = hc()
+      .reduce hc.reducer
+        time_slice: 100 # 최대 1000ms마다 방출
+        reduce: (acc)-> return acc
+        needFlush: (acc)-> acc.length >= 2
+      .do (cur)->
+        expect(cur).to.be.eql ['reduce1', 'reduce2' ]
+
+    chain 'reduce1', (err, feedback, execute_context)->
+      debug 'reduce1', err, feedback, execute_context
+      expect(err).to.not.exist
+      expect(execute_context.exit_status).to.be.eql 'reduced'
+
+    t_start = (new Date).getTime()
+    chain 'reduce2', (err, feedback, execute_context)-> 
+      expect(err).to.not.exist
+      t_end = (new Date).getTime()
+      t_gap = t_end - t_start
+      expect(t_gap).be.below 100 - time_accuracy
+      done()
+
+  it 'when .reduce in 100 ms & call 2 time and not needFlush. then call1 getReducde. call2 go, with delay', (done)-> 
+    chain = hc()
+      .reduce hc.reducer
+        time_slice: 100 # 최대 1000ms마다 방출
+        reduce: (acc)-> return acc
+        needFlush: (acc)-> false
+      .do (cur)->
+        expect(cur).to.be.eql ['reduce1', 'reduce2' ]
+
+    chain 'reduce1', (err, feedback, execute_context)->
+      debug 'reduce1', err, feedback, execute_context
+      expect(err).to.not.exist
+      expect(execute_context.exit_status).to.be.eql 'reduced'
+
+    t_start = (new Date).getTime()
+    chain 'reduce2', (err, feedback, execute_context)-> 
+      expect(err).to.not.exist
+      t_end = (new Date).getTime()
+      t_gap = t_end - t_start
+      expect(t_gap).be.least 100 - time_accuracy
+      done()
+
+  it 'when .reduce function return new cur value. then next fn receive that data ', (done)-> 
+    chain = hc()
+      .reduce hc.reducer
+        time_slice: 100 # 최대 1000ms마다 방출
+        reduce: (acc)-> return acc.join '-'
+        needFlush: (acc)-> acc.length >= 2
+      .do (cur)->
+        expect(cur).to.be.eql 'reduce1-reduce2'
+
+    chain 'reduce1', (err, feedback, execute_context)-> 
+      expect(err).to.not.exist
+      expect(execute_context.exit_status).to.be.eql 'reduced'
+ 
+    chain 'reduce2', (err, feedback, execute_context)-> 
+      expect(err).to.not.exist 
+      expect(execute_context.exit_status).to.be.eql 'finished'
+      done()
+
+  it 'when .reduce is not working actually. then each call finised ', (done)-> 
+    chain = hc()
+      .reduce hc.reducer
+        time_slice: 100 # 최대 1000ms마다 방출
+        reduce: (acc)-> acc
+        needFlush: (acc)-> true
+      .do (cur)-> cur + 1
+
+    chain 'reduce1', (err, feedback, execute_context)-> 
+      expect(err).to.not.exist
+      expect(execute_context.exit_status).to.be.eql 'finished'
+ 
+    chain 'reduce2', (err, feedback, execute_context)-> 
+      expect(err).to.not.exist 
+      expect(execute_context.exit_status).to.be.eql 'finished'
       done()
