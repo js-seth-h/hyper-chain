@@ -202,7 +202,29 @@ hyper_chain = ()->
       p.then _ok, _fail
     return chain
 
+  chain.feedback = (fn)->
+    internal_fns.push (exe_ctx)->
+      fn.call exe_ctx, exe_ctx.cur, exe_ctx.feedback, exe_ctx
+      exe_ctx.resume()
+    return chain
+      
+  chain.delay = (ms)->
+    internal_fns.push (exe_ctx)->
+      _dfn = ()-> exe_ctx.resume()
+      setTimeout _dfn, ms
+      # fn.call exe_ctx, exe_ctx.cur, exe_ctx.feedback, exe_ctx
+      # exe_ctx.resume()
+    return chain
 
+  chain.delayIf = (ms, if_fn)->
+    internal_fns.push (exe_ctx)->
+      yn = if_fn.call exe_ctx, exe_ctx.cur
+      if yn 
+        _dfn = ()-> exe_ctx.resume()
+        setTimeout _dfn, ms
+      else 
+        exe_ctx.resume() 
+    return chain
 
   return chain
 

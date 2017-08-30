@@ -13,11 +13,11 @@ Features와, 테스트 시나리오
   값제어 .do, .map
   처리 제어.filter 
   비동기 .async, .wait .makePromise 
-  에러 제어 .catch .finally
-
+  에러 제어 .catch .finally 
+  반환 제어 .feedback 
   시간제어 .delay .delayIf 
+  
   처리 합병 .reduce
-  반환 제어 .feedback
   .reactTo 
   .concatTo
   .forkFrom
@@ -235,3 +235,55 @@ describe '비동기 .async, .wait .makePromise', ()->
       expect(err).to.exist  
       done()
  
+describe '반환 제어 .feedback', ()->
+
+  it 'when .feedback & set data. then callback get data', (done)->
+    chain = hc()
+      .do (cur)-> cur + 1
+      .feedback (cur, feedback, execute_context)->
+        feedback.send_back_str = 'to callback'
+
+    chain null, (err, feedback, execute_context)-> 
+      expect(err).to.not.exist
+      expect(feedback.send_back_str).to.be.eql 'to callback'
+      done()
+
+
+describe '시간제어 .delay .delayIf ', ()->
+  it 'when .delay. then take a time', (done)-> 
+    t_start = (new Date).getTime()
+    chain = hc()
+      .delay 50
+
+    chain null, (err, feedback, execute_context)-> 
+      expect(err).to.not.exist
+      t_end = (new Date).getTime()
+      t_gap = t_end - t_start
+      expect(t_gap).be.least 50
+      done()
+
+  it 'when .delayIf & pass test. then take a time', (done)-> 
+    t_start = (new Date).getTime()
+    chain = hc()
+      .map (cur)-> 100
+      .delayIf 50, (cur)-> cur > 50
+
+    chain null, (err, feedback, execute_context)-> 
+      expect(err).to.not.exist
+      t_end = (new Date).getTime()
+      t_gap = t_end - t_start
+      expect(t_gap).be.least 50
+      done()
+
+  it 'when .delayIf & failed to pass test. then not take a time', (done)-> 
+    t_start = (new Date).getTime()
+    chain = hc()
+      .map (cur)-> 100
+      .delayIf 50, (cur)-> cur > 150
+
+    chain null, (err, feedback, execute_context)-> 
+      expect(err).to.not.exist
+      t_end = (new Date).getTime()
+      t_gap = t_end - t_start
+      expect(t_gap).be.below 50
+      done()
