@@ -5,128 +5,115 @@ _ = require 'lodash'
 ASAP = (fn)-> process.nextTick fn
 
 
+createExecuteContext = (internal_fns, _callback)-> 
+  _KV_ = {}
+  return exe_ctx =
+    # input: input
+    error: null
+    feedback: {} # callback으로 돌아가는 값
+    # cur: input # 처리중인 현재 값
+    step_inx: -1
+    exit_status: undefined
+      # undefined: 아직 안끝남
+      # error - 에러가 발생
+      # filtered - filter 되어 끝남
+      # reduced - reduce 되어 끝남
+      # finished - 모든 연산 끝남
 
-hyper_chain = ()-> 
-  internal_fns = []
-  chain = (input, _callback)->
+    promises: 
+      all: []
+      # user defined name: []
+      # user defined group: []
 
-    _KV_ = {}
-    exe_ctx =
-      input: input
-      error: null
-      feedback: {} # callback으로 돌아가는 값
-      cur: input # 처리중인 현재 값
-      step_inx: -1
-      exit_status: undefined
-        # undefined: 아직 안끝남
-        # error - 에러가 발생
-        # filtered - filter 되어 끝남
-        # reduced - reduce 되어 끝남
-        # finished - 모든 연산 끝남
- 
-      promises: 
-        all: []
-        # user defined name: []
-        # user defined group: []
-
-      next: (data)->
-        exe_ctx.cur = data 
-        exe_ctx.resume()
-
-      # interrupt: ()-> 
-      #   # 처리를 계속하는 측면에서 resume과 같으나, 
-      #   # 기존의 처리하던 루틴을 무시해야한다.
-      #   # 일단 모두 동기라서 단순 에러 넣기로도 충분한데,
-      #   # wait만 특별처리 할까?
-      resume: ()->
-        ###
-          internal_fns를 꺼내서 수행하는 유일한 주체다.
-          따라서, 다수의 resume이 생길때 여기서 거부하면 된다.
-        ###
-        try
-          exe_ctx.step_inx++ 
-
-          # 체인의 끝이면, 종료
-          if exe_ctx.step_inx >= internal_fns.length
-            debug 'resume -> exit with no error'
-            return exe_ctx.exit 'finished'
-
-
-          _fn = internal_fns[exe_ctx.step_inx]
-          # 에러가 있으면, 에러 수용체가 아니면 패스
-          if exe_ctx.error? 
-            if _fn.accept_error isnt true 
-              debug 'resume -> skip ', exe_ctx.step_inx, 'because not ErrorHandler'
-              return exe_ctx.resume()
-
-          debug 'resume -> call', exe_ctx.step_inx
-          _fn(exe_ctx)
-        catch err          
-          exe_ctx.error = err
-          debug 'resume -> catch error', exe_ctx.step_inx, err.toString()
-          exe_ctx.resume()
-        
-
-      exit: (exit_status)->
-        exe_ctx.exit_status = exit_status
-        exe_ctx.exit_status = 'error' if exe_ctx.error
-        ASAP ()-> 
-          # 만약 외부 콜백에 문제가 있더라도 내부 프로세스를 타면 안됨 
-          return unless _callback
-          [cb, _callback] = [_callback, null]
-          cb exe_ctx.error, exe_ctx.feedback, exe_ctx
-        
-      recall: (name)->
-        return _KV_
-        # return _KV_[name]
-      remember: (name, value)->
-        _KV_[name] = value
-      createAsyncPoint :(name_at_group)-> 
-        _resolve = _reject = null
-        p = new Promise (resolve, reject)->
-          [_resolve, _reject] = [resolve, reject]
-          # @_setResolve = (v)-> resolve v
-          # @_setResolve = (v)-> reject v 
-          # debug 'inPromise', @_setReject, @_setResolve
-
-
-        debug 'createAsyncPoint', _resolve, _reject
-
-        exe_ctx.trackingPromise name_at_group, p
-
-        _done = (err, args...)->
-          debug '_done', err, args...
-          return _reject err if err 
-          # exe_ctx.remember name, args
-          _resolve args
-        return _done 
-      getMergedPromise : (labels...)->
-        Promise.all _.uniq _.flatten _.map labels, (lb)->
-          return exe_ctx.promises[lb]
-
-      trackingPromise: (name_at_group, promise)->
-        [name, group] =_.split name_at_group, '@'
-        if _.isEmpty name
-          throw new Error 'name of .async() is required'  
-        if exe_ctx.promises[name]
-          throw new Error 'name must be uniq' 
-
-        exe_ctx.promises['all'].push promise
-        exe_ctx.promises[name] = []
-        exe_ctx.promises[name].push promise
-        unless _.isEmpty group
-          exe_ctx.promises[group] = [] unless exe_ctx.promises[group]
-          exe_ctx.promises[group].push promise
-        # return name 
-        promise.then (value)-> 
-          exe_ctx.remember name, value
-        , ()-> # prevent node worning. error handled after .wait()
-
-    ASAP ()->
+    next: (data)->
+      exe_ctx.cur = data 
       exe_ctx.resume()
 
-    return exe_ctx
+    # interrupt: ()-> 
+    #   # 처리를 계속하는 측면에서 resume과 같으나, 
+    #   # 기존의 처리하던 루틴을 무시해야한다.
+    #   # 일단 모두 동기라서 단순 에러 넣기로도 충분한데,
+    #   # wait만 특별처리 할까?
+    resume: ()->
+      ###
+        internal_fns를 꺼내서 수행하는 유일한 주체다.
+        따라서, 다수의 resume이 생길때 여기서 거부하면 된다.
+      ###
+      try
+        exe_ctx.step_inx++ 
 
+        # 체인의 끝이면, 종료
+        if exe_ctx.step_inx >= internal_fns.length
+          debug 'resume -> exit with no error'
+          return exe_ctx.exit 'finished'
+
+
+        _fn = internal_fns[exe_ctx.step_inx]
+        # 에러가 있으면, 에러 수용체가 아니면 패스
+        if exe_ctx.error? 
+          if _fn.accept_error isnt true 
+            debug 'resume -> skip ', exe_ctx.step_inx, 'because not ErrorHandler'
+            return exe_ctx.resume()
+
+        debug 'resume -> call', exe_ctx.step_inx
+        _fn(exe_ctx)
+      catch err          
+        exe_ctx.error = err
+        debug 'resume -> catch error', exe_ctx.step_inx, err.toString()
+        exe_ctx.resume()
+      
+
+    exit: (exit_status)->
+      exe_ctx.exit_status = exit_status
+      exe_ctx.exit_status = 'error' if exe_ctx.error
+      ASAP ()-> 
+        # 만약 외부 콜백에 문제가 있더라도 내부 프로세스를 타면 안됨 
+        return unless _callback
+        [cb, _callback] = [_callback, null]
+        cb exe_ctx.error, exe_ctx.feedback, exe_ctx
+      
+    recall: (name)->
+      return _KV_ unless name
+      return _KV_[name]
+    remember: (name, value)->
+      _KV_[name] = value
+    createAsyncPoint :(name_at_group)-> 
+      _resolve = _reject = null
+      p = new Promise (resolve, reject)->
+        [_resolve, _reject] = [resolve, reject]  
+      # debug 'createAsyncPoint', _resolve, _reject 
+      exe_ctx.trackingPromise name_at_group, p
+
+      _done = (err, args...)->
+        debug '_done', err, args...
+        return _reject err if err  
+        _resolve args
+      return _done 
+    getMergedPromise : (labels...)->
+      Promise.all _.uniq _.flatten _.map labels, (lb)->
+        return exe_ctx.promises[lb]
+
+    trackingPromise: (name_at_group, promise)->
+      [name, group] =_.split name_at_group, '@'
+      if _.isEmpty name
+        throw new Error 'name of .async() is required'  
+      if exe_ctx.promises[name]
+        throw new Error 'name must be uniq' 
+
+      exe_ctx.promises['all'].push promise
+      exe_ctx.promises[name] = []
+      exe_ctx.promises[name].push promise
+      unless _.isEmpty group
+        exe_ctx.promises[group] = [] unless exe_ctx.promises[group]
+        exe_ctx.promises[group].push promise 
+
+      promise.then (value)-> 
+        exe_ctx.remember name, value
+      , ()-> # prevent node worning. error handled after .wait()
+
+
+
+applyChainExtender = (chain, internal_fns)-> 
   chain.do = (fn)->
     internal_fns.push (exe_ctx)->
       fn.call exe_ctx, exe_ctx.cur 
@@ -156,8 +143,7 @@ hyper_chain = ()->
       exe_ctx.resume() 
     _catcher.accept_error = true
     internal_fns.push _catcher
-    return chain
-
+    return chain 
 
   chain.finally = (fn)-> 
     _catcher = (exe_ctx)-> 
@@ -181,7 +167,6 @@ hyper_chain = ()->
       exe_ctx.trackingPromise name_at_group, promise
       exe_ctx.resume() 
     return chain
-
 
   chain.wait = (args...)->
     timeout = null
@@ -212,8 +197,6 @@ hyper_chain = ()->
     internal_fns.push (exe_ctx)->
       _dfn = ()-> exe_ctx.resume()
       setTimeout _dfn, ms
-      # fn.call exe_ctx, exe_ctx.cur, exe_ctx.feedback, exe_ctx
-      # exe_ctx.resume()
     return chain
 
   chain.delayIf = (ms, if_fn)->
@@ -231,34 +214,50 @@ hyper_chain = ()->
       fn.call exe_ctx, exe_ctx.cur, exe_ctx 
     return chain
 
+
+hyper_chain = ()-> 
+  internal_fns = []
+  chain = (input, _callback)->
+    exe_ctx = createExecuteContext internal_fns, _callback
+    ASAP ()->
+      # exe_ctx.resume()
+      exe_ctx.input = input
+      exe_ctx.next input
+    return exe_ctx
+
+  applyChainExtender chain, internal_fns 
   return chain
 
 
 hyper_chain.reducer = (opt)->
-  thisReducer = (cur, execute_context)->
+  reducer_self = (cur, execute_context)-> 
+    reducer_self.reducedPending() 
 
-    if thisReducer.pending_context
-      thisReducer.pending_context.exit 'reduced' 
-    thisReducer.pending_context = execute_context
+    reducer_self.pending_context = execute_context
+    reducer_self.acc.push cur
+    if opt.needFlush reducer_self.acc
+      reducer_self.continuePending()
+    else unless reducer_self.tid
+      reducer_self.tid = setTimeout reducer_self.continuePending, opt.time_slice
 
-    _tout = ()->
-      thisReducer.tid = null
-      reduced_data = opt.reduce thisReducer.acc
-      thisReducer.acc = []
-      
-      if thisReducer.pending_context
-        thisReducer.pending_context.next reduced_data
-        thisReducer.pending_context = null
+  reducer_self.reducedPending = ()->
+    return unless reducer_self.pending_context
+    reducer_self.pending_context.exit 'reduced' 
+    reducer_self.pending_context = null
 
-    thisReducer.acc.push cur
-    if opt.needFlush thisReducer.acc
-      _tout()
-    else
-      unless thisReducer.tid
-        thisReducer.tid = setTimeout _tout, opt.time_slice
+  reducer_self.continuePending = ()->
+    throw new Error 'pending context not exist' unless reducer_self.pending_context
 
-  thisReducer.acc = []
-  return thisReducer
+    reducer_self.tid = clearTimeout reducer_self.tid
+    reduced_data = opt.reduce reducer_self.acc
+    reducer_self.acc = []
+
+    reducer_self.pending_context.next reduced_data
+    reducer_self.pending_context = null
+
+
+  reducer_self.acc = []
+  return reducer_self
 
 
 module.exports = exports = hyper_chain

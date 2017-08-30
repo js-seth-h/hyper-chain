@@ -288,10 +288,10 @@ describe '시간제어 .delay .delayIf ', ()->
 
 describe '처리 합병 .reduce', ()->
   
-  it 'when .reduce in 100 ms & call 1 time & not needFlush. then delayed and go', (done)-> 
+  it 'when .reduce in 50 ms & call 1 time & not needFlush. then delayed and go', (done)-> 
     chain = hc()
       .reduce hc.reducer
-        time_slice: 100 # 최대 1000ms마다 방출
+        time_slice: 50 # 최대 50ms마다 방출
         reduce: (acc)-> return acc
         needFlush: (acc)-> return false
       .do (cur)->
@@ -302,12 +302,12 @@ describe '처리 합병 .reduce', ()->
       expect(err).to.not.exist
       t_end = (new Date).getTime()
       t_gap = t_end - t_start
-      expect(t_gap).be.least 100 - time_accuracy
+      expect(t_gap).be.least 50 - time_accuracy
       done()
-  it 'when .reduce in 100 ms & call 1 time needFlush. then go, but no delay', (done)-> 
+  it 'when .reduce in 50 ms & call 1 time needFlush. then go, but no delay', (done)-> 
     chain = hc()
       .reduce hc.reducer
-        time_slice: 100 # 최대 1000ms마다 방출
+        time_slice: 50 
         reduce: (acc)-> return acc
         needFlush: (acc)-> return true
       .do (cur)->
@@ -318,14 +318,14 @@ describe '처리 합병 .reduce', ()->
       expect(err).to.not.exist
       t_end = (new Date).getTime()
       t_gap = t_end - t_start
-      expect(t_gap).be.below 100 - time_accuracy
+      expect(t_gap).be.below 50 - time_accuracy
       done()
 
 
-  it 'when .reduce in 100 ms & call 2 time and needFlush. then call1 getReducde. call2 go, but no delay', (done)-> 
+  it 'when .reduce in 50 ms & call 2 time and needFlush. then call1 getReducde. call2 go, but no delay', (done)-> 
     chain = hc()
       .reduce hc.reducer
-        time_slice: 100 # 최대 1000ms마다 방출
+        time_slice: 50 
         reduce: (acc)-> return acc
         needFlush: (acc)-> acc.length >= 2
       .do (cur)->
@@ -341,13 +341,13 @@ describe '처리 합병 .reduce', ()->
       expect(err).to.not.exist
       t_end = (new Date).getTime()
       t_gap = t_end - t_start
-      expect(t_gap).be.below 100 - time_accuracy
+      expect(t_gap).be.below 50 - time_accuracy
       done()
 
-  it 'when .reduce in 100 ms & call 2 time and not needFlush. then call1 getReducde. call2 go, with delay', (done)-> 
+  it 'when .reduce in 50 ms & call 2 time and not needFlush. then call1 getReducde. call2 go, with delay', (done)-> 
     chain = hc()
       .reduce hc.reducer
-        time_slice: 100 # 최대 1000ms마다 방출
+        time_slice: 50 
         reduce: (acc)-> return acc
         needFlush: (acc)-> false
       .do (cur)->
@@ -363,13 +363,13 @@ describe '처리 합병 .reduce', ()->
       expect(err).to.not.exist
       t_end = (new Date).getTime()
       t_gap = t_end - t_start
-      expect(t_gap).be.least 100 - time_accuracy
+      expect(t_gap).be.least 50 - time_accuracy
       done()
 
   it 'when .reduce function return new cur value. then next fn receive that data ', (done)-> 
     chain = hc()
       .reduce hc.reducer
-        time_slice: 100 # 최대 1000ms마다 방출
+        time_slice: 50 
         reduce: (acc)-> return acc.join '-'
         needFlush: (acc)-> acc.length >= 2
       .do (cur)->
@@ -387,7 +387,7 @@ describe '처리 합병 .reduce', ()->
   it 'when .reduce is not working actually. then each call finised ', (done)-> 
     chain = hc()
       .reduce hc.reducer
-        time_slice: 100 # 최대 1000ms마다 방출
+        time_slice: 50 
         reduce: (acc)-> acc
         needFlush: (acc)-> true
       .do (cur)-> cur + 1
