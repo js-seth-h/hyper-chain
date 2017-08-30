@@ -1,7 +1,7 @@
 {
   "name": "hyper-chain",
-  "version": "0.0.0",
-  "description": "flow control for high performance, parallel, synchronous, easy to use, bisiness logic-centeric, robust error handling\n consists of high order function",
+  "version": "0.0.2-1",
+  "description": "function builder for reactive programing. support promise, node-callback and designed for robust error handling. ",
   "main": "lib",
   "scripts": {
     "build": "coffee -c -b -o lib src  ",
@@ -29,7 +29,8 @@
   },
   "homepage": "https://github.com/js-seth-h/hyper-chain",
   "dependencies": {
-    "chai": "^4.1.1"
+    "chai": "^4.1.1",
+    "lodash": "^4.17.4"
   },
   "devDependencies": {
     "coffee-coverage": "^2.0.1",
