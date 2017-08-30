@@ -8,10 +8,8 @@ ASAP = (fn)-> process.nextTick fn
 createExecuteContext = (internal_fns, _callback)-> 
   _KV_ = {}
   return exe_ctx =
-    # input: input
     error: null
     feedback: {} # callback으로 돌아가는 값
-    # cur: input # 처리중인 현재 값
     step_inx: -1
     exit_status: undefined
       # undefined: 아직 안끝남
@@ -28,19 +26,13 @@ createExecuteContext = (internal_fns, _callback)->
     next: (data)->
       exe_ctx.cur = data 
       exe_ctx.resume()
-
-    # interrupt: ()-> 
-    #   # 처리를 계속하는 측면에서 resume과 같으나, 
-    #   # 기존의 처리하던 루틴을 무시해야한다.
-    #   # 일단 모두 동기라서 단순 에러 넣기로도 충분한데,
-    #   # wait만 특별처리 할까?
-    resume: ()->
-      ###
-        internal_fns를 꺼내서 수행하는 유일한 주체다.
-        따라서, 다수의 resume이 생길때 여기서 거부하면 된다.
-      ###
+ 
+    resume: ()-> 
+      # internal_fns를 꺼내서 수행하는 유일한 주체다. 
+      # 절대 병렬 호출이 되서는 안됨 
       try
-        exe_ctx.step_inx++ 
+        #다음 스탭으로
+        exe_ctx.step_inx++  
 
         # 체인의 끝이면, 종료
         if exe_ctx.step_inx >= internal_fns.length
@@ -80,8 +72,7 @@ createExecuteContext = (internal_fns, _callback)->
     createAsyncPoint :(name_at_group)-> 
       _resolve = _reject = null
       p = new Promise (resolve, reject)->
-        [_resolve, _reject] = [resolve, reject]  
-      # debug 'createAsyncPoint', _resolve, _reject 
+        [_resolve, _reject] = [resolve, reject]   
       exe_ctx.trackingPromise name_at_group, p
 
       _done = (err, args...)->

@@ -153,6 +153,19 @@ describe 'error handling', ()->
       # expect(execute_context.exit_status).to.be.equal 'filtered'
       done()
 
+  it 'when feedback callback has trouble, then it will go uncaughtException', (done)->
+    return done()
+    ###
+      this test is working. and confirmed by human.
+      but chai did not show correct response.
+      it is uncaughtException, but chai.js consider it as Test Fail.
+    ###
+    process.on 'uncaughtException', (err)-> 
+      expect(err).to.exist
+      done()
+    chain = hc()
+    chain 0, (err)->
+      throw new Error 'JUST'
 
 
 describe '비동기 .async, .wait .makePromise', ()->
