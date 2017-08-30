@@ -1,14 +1,12 @@
 debug =  require('debug')('hc')
 
-
+_ = require 'lodash'
 
 ASAP = (fn)-> process.nextTick fn
 
 
 
-hyper_chain = ()->
-
-
+hyper_chain = ()-> 
   internal_fns = []
   chain = (input, _callback)->
 
@@ -26,7 +24,11 @@ hyper_chain = ()->
         # reduced - reduce 되어 끝남
         # finished - 모든 연산 끝남
  
-      promises: {}
+      promises: 
+        all: []
+        # user defined name: []
+        # user defined group: []
+
       next: (data)->
         exe_ctx.cur = data 
         exe_ctx.resume()
@@ -79,7 +81,7 @@ hyper_chain = ()->
         # return _KV_[name]
       remember: (name, value)->
         _KV_[name] = value
-      createAsyncPoint :(name)->
+      createAsyncPoint :(name_at_group)-> 
         _resolve = _reject = null
         p = new Promise (resolve, reject)->
           [_resolve, _reject] = [resolve, reject]
@@ -87,13 +89,38 @@ hyper_chain = ()->
           # @_setResolve = (v)-> reject v 
           # debug 'inPromise', @_setReject, @_setResolve
 
+
         debug 'createAsyncPoint', _resolve, _reject
-        exe_ctx.promises[name] = p
+
+        exe_ctx.trackingPromise name_at_group, p
+
         _done = (err, args...)->
           debug '_done', err, args...
           return _reject err if err 
+          # exe_ctx.remember name, args
           _resolve args
         return _done 
+      getMergedPromise : (labels...)->
+        Promise.all _.uniq _.flatten _.map labels, (lb)->
+          return exe_ctx.promises[lb]
+
+      trackingPromise: (name_at_group, promise)->
+        [name, group] =_.split name_at_group, '@'
+        if _.isEmpty name
+          throw new Error 'name of .async() is required'  
+        if exe_ctx.promises[name]
+          throw new Error 'name must be uniq' 
+
+        exe_ctx.promises['all'].push promise
+        exe_ctx.promises[name] = []
+        exe_ctx.promises[name].push promise
+        unless _.isEmpty group
+          exe_ctx.promises[group] = [] unless exe_ctx.promises[group]
+          exe_ctx.promises[group].push promise
+        # return name 
+        promise.then (value)-> 
+          exe_ctx.remember name, value
+        , ()-> # prevent node worning. error handled after .wait()
 
     ASAP ()->
       exe_ctx.resume()
@@ -141,27 +168,39 @@ hyper_chain = ()->
     internal_fns.push _catcher
     return chain
  
-  chain.async = (name_group, fn)-> 
+  chain.async = (name_at_group, fn)->  
     internal_fns.push (exe_ctx)->
-      a_done = exe_ctx.createAsyncPoint name_group
+      a_done = exe_ctx.createAsyncPoint name_at_group
       fn.call exe_ctx, exe_ctx.cur, a_done
       exe_ctx.resume() 
     return chain
+    
+  chain.makePromise = (name_at_group, fn)->  
+    internal_fns.push (exe_ctx)-> 
+      promise = fn.call exe_ctx, exe_ctx.cur
+      exe_ctx.trackingPromise name_at_group, promise
+      exe_ctx.resume() 
+    return chain
 
-  chain.wait = (name)->
-    internal_fns.push (exe_ctx)->
-      p = exe_ctx.promises[name]
 
+  chain.wait = (args...)->
+    timeout = null
+    if _.isNumber args[0]
+      timeout = args.shift()  
+    internal_fns.push (exe_ctx)->    
+      p = new Promise (resolve, reject)->
+        task_promise = exe_ctx.getMergedPromise args...
+        task_promise.then resolve, reject
+        if timeout
+          _dfn = ()-> reject new Error "timeout"
+          setTimeout _dfn, timeout 
       _ok = (value)->
-        exe_ctx.remember name, value
         exe_ctx.resume()
       _fail = (err)->
         exe_ctx.error = err 
         exe_ctx.resume() 
       p.then _ok, _fail
     return chain
-
- 
 
 
 

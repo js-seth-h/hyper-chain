@@ -12,12 +12,12 @@ Features와, 테스트 시나리오
   함수일것 = 호출이 가능할것. 
   값제어 .do, .map
   처리 제어.filter 
-  처리 합병 .reduce
   비동기 .async, .wait .makePromise 
-  시간제어 .delay .delayIf 
   에러 제어 .catch .finally
-  반환 제어 .feedback
 
+  시간제어 .delay .delayIf 
+  처리 합병 .reduce
+  반환 제어 .feedback
   .reactTo 
   .concatTo
   .forkFrom
@@ -165,7 +165,7 @@ describe '비동기 .async, .wait .makePromise', ()->
       .async 'test', (cur, a_done)->
         _dfn = ()->
           a_done null, 'async_return'
-        setTimeout _dfn, 200
+        setTimeout _dfn, 50
       .map (cur)-> 2
       .wait 'test'
       .map (cur)->
@@ -184,7 +184,47 @@ describe '비동기 .async, .wait .makePromise', ()->
       .async 'test', (cur, a_done)->
         _dfn = ()->
           a_done new Error 'JUST'
-        setTimeout _dfn, 200
+        setTimeout _dfn, 50
+      .map (cur)-> 2
+      .wait 'test'
+      .map (cur)->
+        {test} = @recall() 
+        return test
+
+    chain null, (err, feedback, execute_context)-> 
+      expect(err).to.exist  
+      done()
+ 
+  it 'when .async & .makePromise, then read value from stroage', (done)->
+
+    chain = hc()
+      .map (cur)-> 0
+      .makePromise 'test', (cur)->
+        new Promise (resolve, reject)->
+          _dfn = ()->
+            resolve 'resolve_return'
+          setTimeout _dfn, 50
+      .map (cur)-> 2
+      .wait 'test'
+      .map (cur)->
+        {test} = @recall() 
+        return test
+
+    chain null, (err, feedback, execute_context)->
+      expect(err).to.not.exist
+      expect(execute_context.cur).to.be.eql 'resolve_return'
+      done()
+
+
+  it 'when .async & .makePromise but occur Error, then callback get error', (done)->
+
+    chain = hc()
+      .map (cur)-> 0
+      .makePromise 'test', (cur)->
+        new Promise (resolve, reject)->
+          _dfn = ()->
+            reject new Error 'JUST'
+          setTimeout _dfn, 50 
       .map (cur)-> 2
       .wait 'test'
       .map (cur)->
