@@ -62,6 +62,7 @@ createExecuteContext = (internal_fns, _callback)->
         # 만약 외부 콜백에 문제가 있더라도 내부 프로세스를 타면 안됨 
         return unless _callback
         [cb, _callback] = [_callback, null]
+        debug 'outcallback', exe_ctx.error, exe_ctx.feedback, exe_ctx
         cb exe_ctx.error, exe_ctx.feedback, exe_ctx
       
     recall: (name)->
@@ -85,6 +86,8 @@ createExecuteContext = (internal_fns, _callback)->
           fn err, args...          
       return _done 
     getMergedPromise : (labels...)->
+      if labels.length is 0 
+        return Promise.all exe_ctx.promises.all
       Promise.all _.uniq _.flatten _.map labels, (lb)->
         return exe_ctx.promises[lb]
 
@@ -229,6 +232,9 @@ hyper_chain = ()->
       exe_ctx.resume()
     return exe_ctx
 
+  chain.reactTo = (hook)->
+    hook.on chain
+    return chain
 
   applyChainExtender chain, internal_fns 
   return chain
