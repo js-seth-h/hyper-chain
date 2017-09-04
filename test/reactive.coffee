@@ -1,4 +1,4 @@
-hc = require '../src'
+hc = require '../src/chain'
 chai = require 'chai'
 expect = chai.expect
 debug = require('debug')('test')

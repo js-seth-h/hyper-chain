@@ -1,4 +1,4 @@
-
+_ = require 'lodash'
 
 
 ###
@@ -44,19 +44,35 @@ class Hook
   off: ()->
     @opt.beforeOff @chain if @opt.beforeOff
     @chain = undefined
-  tow: (data, callback)->
+  tow: (data, callback)=> # important!! bind self, 
     @chain data, callback 
 
 Hook.of = (src, opt)->
   unless opt
     opt = 
-      setter : 'addHook'
-      unsetter : 'removeHook'
-  return new Hook
+      setter : 'setCallback'
+      unsetter : 'setCallback'
+  return h = new Hook
     afterOn: ()->
       src[opt.setter] h.tow
     beforeOff: ()->
-      src[opt.unsetter] h.tow
+      src[opt.unsetter] null
+
+ 
+Hook.event = (src, e_name)->
+  return new Hook
+    afterOn: (a_chain)->
+      src.on e_name, a_chain
+    beforeOff: (a_chain)->
+      src.removeListener e_name, a_chain
+
+Hook.promise = (promise)->
+  return new Hook
+    afterOn: (a_chain)->
+      _ok = (value)-> a_chain value 
+      _fail = (err)-> 
+        a_chain.throwIn err
+      promise.then _ok, _fail
 
 Hook.pull = (src, prop_path, ms = 500)-> 
   return h = new Hook
@@ -72,28 +88,6 @@ Hook.pull = (src, prop_path, ms = 500)->
 
       h.tid = setInterval _dfn, ms
     beforeOff: ()->
-      clearInterval h.tid
- 
-Hook.event = (src, e_name)->
-  return new Hook
-    afterOn: (a_chain)->
-      src.on e_name, a_chain
-    off: (a_chain)->
-      src.off e_name, a_chain
-
-Hook.promise = (promise)->
-  return new Hook
-    afterOn: (a_chain)->
-      promise.then (value)-> a_chain value 
-
-# Hook.after = (fn)->
-#   return new Hook
-#     afterOn: (a_chain)->
-#       callback = (err, args...)->
-#         unless err
-#           a_chain args...
-#         else
-#           a_chain.throwIn err
-#       fn callback 
+      h.tid = clearInterval h.tid
 
 module.exports = exports = Hook

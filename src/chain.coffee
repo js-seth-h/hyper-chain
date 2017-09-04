@@ -47,7 +47,7 @@ createExecuteContext = (internal_fns, _callback)->
             debug 'resume -> skip ', exe_ctx.step_inx, 'because not ErrorHandler'
             return exe_ctx.resume()
 
-        debug 'resume -> call', exe_ctx.step_inx
+        debug 'resume -> call', exe_ctx.step_inx #, 'with', exe_ctx
         _fn(exe_ctx)
       catch err          
         exe_ctx.error = err
@@ -133,7 +133,8 @@ applyChainExtender = (chain, internal_fns)->
 
   chain.catch = (fn)-> 
     _catcher = (exe_ctx)-> 
-      fn.call exe_ctx, exe_ctx.err, exe_ctx.cur 
+      # debug 'call .catch with', exe_ctx.error
+      fn.call exe_ctx, exe_ctx.error, exe_ctx.cur 
       exe_ctx.error = null
       exe_ctx.resume() 
     _catcher.accept_error = true
@@ -142,7 +143,7 @@ applyChainExtender = (chain, internal_fns)->
 
   chain.finally = (fn)-> 
     _catcher = (exe_ctx)-> 
-      fn.call exe_ctx, exe_ctx.err, exe_ctx.cur 
+      fn.call exe_ctx, exe_ctx.error, exe_ctx.cur 
       # exe_ctx.error = null
       exe_ctx.resume() 
     _catcher.accept_error = true
@@ -219,6 +220,15 @@ hyper_chain = ()->
       exe_ctx.input = input
       exe_ctx.next input
     return exe_ctx
+
+  chain.throwIn = (err)->
+    exe_ctx = createExecuteContext internal_fns
+    exe_ctx.error = err 
+    # debug 'throwIn', exe_ctx
+    ASAP ()->
+      exe_ctx.resume()
+    return exe_ctx
+
 
   applyChainExtender chain, internal_fns 
   return chain

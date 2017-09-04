@@ -1,4 +1,4 @@
-hc = require '../src'
+hc = require '../src/chain'
 chai = require 'chai'
 expect = chai.expect
 debug = require('debug')('test')
@@ -99,7 +99,7 @@ describe 'error handling', ()->
       .do (cur)-> throw new Error 'Just'
       .map (cur)-> 2
       .map (cur)-> 3
-      .catch (cur, err)->
+      .catch (err, cur)->
 
     chain 0, (err, feedback, execute_context)->
       expect(err).to.not.exist
