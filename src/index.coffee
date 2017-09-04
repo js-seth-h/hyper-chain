@@ -79,6 +79,10 @@ createExecuteContext = (internal_fns, _callback)->
         debug '_done', err, args...
         return _reject err if err  
         _resolve args
+      _done.catch = (fn)->
+        return (err, args...)->
+          return _done err if err 
+          fn err, args...          
       return _done 
     getMergedPromise : (labels...)->
       Promise.all _.uniq _.flatten _.map labels, (lb)->

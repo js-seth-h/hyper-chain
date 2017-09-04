@@ -112,11 +112,11 @@ describe '?', ()->
       MISD - 용처가??
       MIMD - async + await 로 해결보는게....
 
-      SIMD면 충분하고, 타이밍 제어는 Enforcer 수행할수 있다.
-      다만. Enforcer가 끝났는지를 어떻게 알 것인가?  이건 Enforcer가 알아서...
+      SIMD면 충분하고, 타이밍 제어는 Dynamo 수행할수 있다.
+      다만. Dynamo가 끝났는지를 어떻게 알 것인가?  이건 Dynamo가 알아서...
 
 
-      Enforcer, 데이터를 밀어 넣는 장치
+      Dynamo, 데이터를 밀어 넣는 장치
         When & What이 핵심인데 다양하니까 정형화는 무리
         다양성을 허용하면 많은 문제 해결가능
 
@@ -131,30 +131,30 @@ describe '?', ()->
       How - 이건 Chain이 하는것이다.
 
       따지자면 끝도 없고, 니맘대로다.
-      고려할것 enforcer와 외부와의 관계.
+      고려할것 Dynamo와 외부와의 관계.
       외부는 What Source, When Source??
         데이터의 소스는 분명한데 When이 소스가 있나..? 있네. 뭐가됫든 직접만들기도, 위임하기도 가능.
 
-      의문1. enforcer는 callback을 수신 한다?안한다?
+      의문1. Dynamo는 callback을 수신 한다?안한다?
         Flow 컨트롤을 하려면 수신을 해야맞다. 다만 Error까지 온다.
-        Error는 Enforcer가 처리해야하는가?
+        Error는 Dynamo가 처리해야하는가?
         항상 UncaughtException이 문제지.. 캐치되면 요청 맥락에서 처리가 되니까..
 
         hook.event, interval, cron의 경우, Callback이 의미가 없다. event는 wait안하니까.
         > 처리중엔 처리하지 않는다? 이건 Reducer나 Filter로 되지 않나? 이건 연산특징인가?발생 특징인가?
           처리 상태에 대하여 처리 여부를 결정하니, 연산특징. 2번 할 필요가 없는 연산
 
-        Enforcer = chain with self trigger가 되어 버려서 의미없는 논의
-        chain이 다른 체인(=Enforcer)에 편입될지 말지는 concatTo, forkFrom 구분하여 3rd의 판단에 맞김
-        > 이거 틀렸음. Enforcer는 모듈이고, Timing 제어권이 있어서 Enforcer가 Callbak수신여부를 판단해야함.
+        Dynamo = chain with self trigger가 되어 버려서 의미없는 논의
+        chain이 다른 체인(=Dynamo)에 편입될지 말지는 concatTo, forkFrom 구분하여 3rd의 판단에 맞김
+        > 이거 틀렸음. Dynamo는 모듈이고, Timing 제어권이 있어서 Dynamo가 Callbak수신여부를 판단해야함.
 
 
       event 'end', Enfocer가 끝을 인식 했을떄, 무한 스트림은 안생긴다. ex> EventStream
-      Enforcer는 능동체라서 'drain'은 없을듯하다.
+      Dynamo는 능동체라서 'drain'은 없을듯하다.
 
       체인은  WritableStream과 유사.
         > 그러나 체인은 데이터를 보관하지 않는다. 흘려 보낸다.
-      Enforcer는 ReaderbleStream과 유사하다.
+      Dynamo는 ReaderbleStream과 유사하다.
         > 데이터보관을 해도 되고, 정지도 될텐데..?, 파이프와 다르바 없는 체인.
 
 
@@ -181,9 +181,9 @@ describe '?', ()->
         Expect Value == 감시 대상 getter()  => CheckChain
         Prev Value != 감시 대상 getter()  => CheckChain
 
-        Enforcer = Enforcer + filter도 가능하겠네..
+        Dynamo = Dynamo + filter도 가능하겠네..
 
-        hc.enforcer()
+        hc.Dynamo()
           .asap()
           .event src, 'event_name'
           .filter
@@ -192,7 +192,7 @@ describe '?', ()->
           .reactTo hc.timing.asap()
           .reactTo hc.timing.event src, 'event_name'
 
-        체인이 스스로 능동체가 되면 enforcer 로 변한다.
+        체인이 스스로 능동체가 되면 Dynamo 로 변한다.
         피동 반응 vs 능동반응? 능동반은 == Pull? PullWhen? -> 피동 반응?
 
       hc.hook.ser는 어떻게 되냐?
@@ -203,15 +203,15 @@ describe '?', ()->
         ser처리를 하려면 필히 callback을 받아야한다.
 
         꼬였다.. reactTo를 아래처럼 코딩하면 안됨.
-          reactTo = (enforcer)->
+          reactTo = (Dynamo)->
             hook.do (cur)-> thisChain cur
 
-        아래 처럼 되어서, Callback여부가 enforcer 책임하에 가야함.
-          reactTo = (enforcer)->
+        아래 처럼 되어서, Callback여부가 Dynamo 책임하에 가야함.
+          reactTo = (Dynamo)->
             hook.attach thisChain
 
 
-          enforcer = (opt)->
+          Dynamo = (opt)->
             self =
               attach: (chain)->
               activate: (cur)->
@@ -220,13 +220,13 @@ describe '?', ()->
                 self.chains. cur, calback?
             return self
 
-          타이밍 제어를 위해서는 Enforcer가 알아함.
+          타이밍 제어를 위해서는 Dynamo가 알아함.
 
-      Enforcer is a EventEmitter 'end'
-      Enforcer is not Function - 실행불가. 실행시 해야할 작업 불명
-      Enforcer is a Object
+      Dynamo is a EventEmitter 'end'
+      Dynamo is not Function - 실행불가. 실행시 해야할 작업 불명
+      Dynamo is a Object
 
-      Enforcer has call Reactors, 이를 위한 판단 로직, Function call의 진입점(~트리거)을 가짐.
+      Dynamo has call Reactors, 이를 위한 판단 로직, Function call의 진입점(~트리거)을 가짐.
               is 다수의 H-Chain이 모인 구조물 => 모듈
               모듈 내부 데이터도 포함가능하고...
               특별한 규격을 가진 모듈
@@ -234,9 +234,9 @@ describe '?', ()->
       Chain은 애초에 Module/data/Model ---------> Moudle/Data/Model을 하려고 만든거다.
       Chain의 시작점인 Enforce는 어찌보면 Module인게 당연...
 
-      Enforcer는
+      Dynamo는
         최소한 Timing(함수 실행)을 가져야한다.
-          즉 hook.event 처럼 최소한것 것만 가져도 enforcer다.
+          즉 hook.event 처럼 최소한것 것만 가져도 Dynamo다.
         연결된 모든 Chain = Function을 호출해줘야한다.
           callback을 수신하든 안하든 자유다.
 
@@ -244,13 +244,13 @@ describe '?', ()->
         입력 데이터를 가지고 시작해도 되고, 어디서 퍼와도 된다.
         버퍼를 하던 drop을 하던 자유다.
 
-      Enforcer = 외부로 드러는것..?
+      Dynamo = 외부로 드러는것..?
         addChain : #  AddFunction.
         Chain_list
         Name?
         event, 'end'
 
-      Enforcer는 너무 직접적인가..?
+      Dynamo는 너무 직접적인가..?
       React에 초점을 두는게 아니라 Drive에 초점이 가니까..
       React to Something??? Something!!!
 
@@ -304,9 +304,9 @@ describe '?', ()->
 
 
       ###
-      # .event src, 'event_name' 도 가능하다. 짧고 직접적. 3단어 짧다 reactTo hc.enforcer
+      # .event src, 'event_name' 도 가능하다. 짧고 직접적. 3단어 짧다 reactTo hc.Dynamo
       # 늘 그렇듯이 간접층이 없으면, 여러 문제를 해결하기가 어렵지..
-      # 게다가 참 다양한 enforcer형태가 있을텐데, 다 구현해넣기도 무리. 짧게 쓸방법은..?
+      # 게다가 참 다양한 Dynamo형태가 있을텐데, 다 구현해넣기도 무리. 짧게 쓸방법은..?
       # .reactTo hook.event src, 'event_name'
       # hook.event(src, 'event_name').drive chain
       .reactTo hc.actor.interval 1000 # 1000 ms 마다 발생
