@@ -413,3 +413,29 @@ describe '처리 합병 .reduce', ()->
       expect(err).to.not.exist 
       expect(execute_context.exit_status).to.be.eql 'finished'
       done()
+  it 'when .reduce hasnot time_slice. then needFlush decide all ', (done)-> 
+    chain = hc()
+      .reduce hc.reducer
+        time_slice: false
+        reduce: (acc)-> acc
+        needFlush: (acc)-> 
+          debug 'acc', acc
+          acc.length >= 4 
+      # .do (cur)-> cur + 1
+
+    chain 'reduce1', (err, feedback, execute_context)-> 
+      expect(err).to.not.exist
+      expect(execute_context.exit_status).to.be.eql 'reduced'
+ 
+    chain 'reduce2', (err, feedback, execute_context)-> 
+      expect(err).to.not.exist
+      expect(execute_context.exit_status).to.be.eql 'reduced'
+ 
+    chain 'reduce3', (err, feedback, execute_context)-> 
+      expect(err).to.not.exist
+      expect(execute_context.exit_status).to.be.eql 'reduced'
+ 
+    chain 'reduce4', (err, feedback, execute_context)-> 
+      expect(err).to.not.exist 
+      expect(execute_context.exit_status).to.be.eql 'finished'
+      done()

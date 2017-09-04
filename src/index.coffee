@@ -228,7 +228,7 @@ hyper_chain.reducer = (opt)->
     reducer_self.acc.push cur
     if opt.needFlush reducer_self.acc
       reducer_self.continuePending()
-    else unless reducer_self.tid
+    else if opt.time_slice and not reducer_self.tid 
       reducer_self.tid = setTimeout reducer_self.continuePending, opt.time_slice
 
   reducer_self.reducedPending = ()->
@@ -239,7 +239,7 @@ hyper_chain.reducer = (opt)->
   reducer_self.continuePending = ()->
     throw new Error 'pending context not exist' unless reducer_self.pending_context
 
-    reducer_self.tid = clearTimeout reducer_self.tid
+    reducer_self.tid = clearTimeout reducer_self.tid if reducer_self.tid
     reduced_data = opt.reduce reducer_self.acc
     reducer_self.acc = []
 
