@@ -7,6 +7,16 @@ ASAP = (fn)-> process.nextTick fn
 
 createExecuteContext = (internal_fns, _callback)-> 
   _KV_ = {}
+  
+  outCallback = (error, exit_status)->
+    exe_ctx.exit_status = exit_status
+    exe_ctx.error = error
+    ASAP ()-> # 만약 외부 콜백에 문제가 있더라도 내부 프로세스를 타면 안됨 
+      return unless _callback
+      [cb, _callback] = [_callback, null]
+      debug 'outcallback', exe_ctx.error, exe_ctx.feedback, exe_ctx
+      cb exe_ctx.error, exe_ctx.feedback, exe_ctx  
+    
   return exe_ctx =
     error: null
     feedback: {} # callback으로 돌아가는 값
@@ -55,15 +65,16 @@ createExecuteContext = (internal_fns, _callback)->
         exe_ctx.resume()
       
 
-    exit: (exit_status)->
-      exe_ctx.exit_status = exit_status
-      exe_ctx.exit_status = 'error' if exe_ctx.error
-      ASAP ()-> 
-        # 만약 외부 콜백에 문제가 있더라도 내부 프로세스를 타면 안됨 
-        return unless _callback
-        [cb, _callback] = [_callback, null]
-        debug 'outcallback', exe_ctx.error, exe_ctx.feedback, exe_ctx
-        cb exe_ctx.error, exe_ctx.feedback, exe_ctx
+    exit: (exit_status)-> 
+      p = new Promise (resolve, reject)-> 
+        return reject exe_ctx.error if exe_ctx.error 
+        task_promise = exe_ctx.getMergedPromise()
+        task_promise.then resolve, reject 
+      _ok = ()-> 
+        outCallback null, exit_status
+      _fail = (error)->
+        outCallback error, 'error'
+      p.then _ok, _fail  
       
     recall: (name)->
       return _KV_ unless name
