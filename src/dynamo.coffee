@@ -17,22 +17,48 @@ Dynamo는 하나의 핸들러를 가진다.
   
 ###
 class Dynamo extends EventEmitter
-  setCallback: (@ext_fn)-> 
-  fireHook: (data, callback)->
-    @ext_fn data, callback if @ext_fn 
+  constructor: ()->
+    @routine = hc()
+  setDataHandler: (@ext_fn)-> 
+  doDataHandling: (data, callback)->
+    if @ext_fn
+      return @ext_fn data, callback
+    else
+      callback null, null
     
 
 Dynamo.Fixed =
 class FixedDynamo extends Dynamo
   constructor: (@data)->
+    super()
     @feedbacks = _.map @data, (d)-> undefined
     @errors = _.map @data, (d)-> undefined
-    @routine = hc()
   start: (callback)->
     self = this
     @routine {}, (err)->
       callback err, self
+      
+Dynamo.Flex = # reducer와 코드 구조를 정리하는 것을 고민하자.
+class FlexDynamo extends Dynamo
+  constructor: (@opt)->
+    super()
+    @queue = []
     
+    if @opt.check.enqueue 
+      @on 'put', ()=> @check()
+    
+  put: (data)->
+    @queue.push data
+    @emit 'put' 
+  
+  check: ()->
+    data = @getEvictable()
+    if data
+      # TODO 이 데이터 저장소에서만 예외처리를 규정하던가 uncaughtException으로 보내버린다
+      @doDataHandling data 
+      
+  getEvictable: ()->
+    throw new Error 'Not Implement'  
  
 class Semaphore
   constructor: (max)->
@@ -60,7 +86,7 @@ Dynamo.parallel = (data)->
   d = new FixedDynamo data  
   _.forEach data, (datum, inx)->
     d.routine.async inx, (cur, done)->
-      d.fireHook datum, (err, feedback)->
+      d.doDataHandling datum, (err, feedback)->
         # debug 'done a parallel', err, feedback
         d.feedbacks[inx] = feedback
         d.errors[inx] = err
@@ -76,7 +102,7 @@ Dynamo.nParallel = (concurrent, data)->
   _.forEach data, (datum, inx)->
     d.routine.async inx, (cur, done)->
       s.enter ()->
-        d.fireHook datum, (err, feedback)->
+        d.doDataHandling datum, (err, feedback)->
           s.leave()
           # debug 'done a parallel', err, feedback
           d.feedbacks[inx] = feedback
@@ -92,7 +118,7 @@ Dynamo.serial = (data)->
   _.forEach data, (datum, inx)->
     d.routine.async inx, (cur, done)->
       debug 'dynamo.fire', datum
-      d.fireHook datum, (err, feedback)->
+      d.doDataHandling datum, (err, feedback)->
         debug 'done a serial', err, feedback
         d.feedbacks[inx] = feedback
         d.errors[inx] = err

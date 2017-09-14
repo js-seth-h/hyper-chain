@@ -9,20 +9,20 @@ feature = describe
 scenario = it
 
 describe 'hook.of', ()->
-  it 'when hook.of, then should call setCallback', ()->
+  it 'when hook.of, then should call setDataHandler', ()->
     chain = hc()
     ObjHasCallback =
-      setCallback : (fn)->
+      setDataHandler : (fn)->
         ObjHasCallback.callback = fn
     h = hook.of ObjHasCallback
     h.on chain
     expect(ObjHasCallback.callback).to.be.exist
 
 
-  it 'when hook.of & .off(), then should call setCallback with Nil', ()->
+  it 'when hook.of & .off(), then should call setDataHandler with Nil', ()->
     chain = hc()
     ObjHasCallback =
-      setCallback : (fn)->
+      setDataHandler : (fn)->
         ObjHasCallback.callback = fn
     h = hook.of ObjHasCallback
     h.on chain
@@ -34,7 +34,7 @@ describe 'hook.of', ()->
   it 'when hook.of & trigger callback. then chain get args of callback', ()->
     chain = hc()
     ObjHasCallback =
-      setCallback : (fn)->
+      setDataHandler : (fn)->
         ObjHasCallback.callback = fn
     h = hook.of ObjHasCallback
     h.on chain
