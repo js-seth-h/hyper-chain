@@ -1,6 +1,6 @@
 _ = require 'lodash'
 hc = require './chain'
-debug =  require('debug')('hc.dynamo')
+debug = require('debug')('hc.dynamo')
 EventEmitter = require('events')
 ###
 제 1 목적은 능동성을 확보하는것.
@@ -25,7 +25,7 @@ class Dynamo extends EventEmitter
       return @ext_fn data, callback
     else
       callback null, null
-    
+
 
 Dynamo.Fixed =
 class FixedDynamo extends Dynamo
@@ -37,29 +37,35 @@ class FixedDynamo extends Dynamo
     self = this
     @routine {}, (err)->
       callback err, self
-      
+
 Dynamo.Flex = # reducer와 코드 구조를 정리하는 것을 고민하자.
 class FlexDynamo extends Dynamo
   constructor: (@opt)->
     super()
-    @queue = []
-    
+    @queue = [] 
     if @opt.check.enqueue 
       @on 'put', ()=> @check()
+    @afterHandling = @opt.afterHandling
+    @getEvictable = @opt.getEvictable 
     
+    if @afterHandling
+      @afterHandling = (args...)=> @afterHandling args... 
+    unless @getEvictable
+      throw new Error "getEvictable is required"
+      
   put: (data)->
     @queue.push data
     @emit 'put' 
-  
+
   check: ()->
     data = @getEvictable()
-    if data
-      # TODO 이 데이터 저장소에서만 예외처리를 규정하던가 uncaughtException으로 보내버린다
-      @doDataHandling data 
-      
-  getEvictable: ()->
-    throw new Error 'Not Implement'  
- 
+    return unless data
+    @doDataHandling data, @afterHandling or undefined
+
+  # afterHandling: (err)->    
+  # getEvictable: ()->
+  #   throw new Error 'Not Implement'  
+
 class Semaphore
   constructor: (max)->
     @available = max 
@@ -79,22 +85,22 @@ class Semaphore
   destroy: ()->
     @available = 0
     @queue = [] 
-    
+
 
 Dynamo.par = 
 Dynamo.parallel = (data)-> 
-  d = new FixedDynamo data  
+  d = new FixedDynamo data 
   _.forEach data, (datum, inx)->
     d.routine.async inx, (cur, done)->
       d.doDataHandling datum, (err, feedback)->
         # debug 'done a parallel', err, feedback
         d.feedbacks[inx] = feedback
         d.errors[inx] = err
-        done err  
+        done err 
   d.routine.wait() 
   return d
 
-      
+
 Dynamo.nPar = 
 Dynamo.nParallel = (concurrent, data)-> 
   d = new FixedDynamo data 
@@ -114,7 +120,7 @@ Dynamo.nParallel = (concurrent, data)->
 
 Dynamo.ser =
 Dynamo.serial = (data)->
-  d = new FixedDynamo data  
+  d = new FixedDynamo data 
   _.forEach data, (datum, inx)->
     d.routine.async inx, (cur, done)->
       debug 'dynamo.fire', datum
@@ -123,7 +129,7 @@ Dynamo.serial = (data)->
         d.feedbacks[inx] = feedback
         d.errors[inx] = err
         done err
-    d.routine.wait()  
+    d.routine.wait() 
   return d
 
 module.exports = exports = Dynamo
