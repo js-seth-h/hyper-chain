@@ -43,8 +43,6 @@ class FlexDynamo extends Dynamo
   constructor: (@opt)->
     super()
     @queue = [] 
-    if @opt.check.enqueue 
-      @on 'put', ()=> @check()
     @afterHandling = @opt.afterHandling
     @getEvictable = @opt.getEvictable 
     
@@ -52,16 +50,20 @@ class FlexDynamo extends Dynamo
       @afterHandling = (args...)=> @afterHandling args... 
     unless @getEvictable
       throw new Error "getEvictable is required"
+    
+    if @opt.check.put 
+      @on 'put', ()=> @check()
       
   put: (data)->
     @queue.push data
-    @emit 'put' 
+    @emit 'put', this
 
   check: ()->
-    data = @getEvictable()
-    return unless data
-    @doDataHandling data, @afterHandling or undefined
-
+    data = @getEvictable this
+    if data
+      @doDataHandling data, @afterHandling or undefined
+    else 
+      @emit 'pending', this
   # afterHandling: (err)->    
   # getEvictable: ()->
   #   throw new Error 'Not Implement'  

@@ -258,7 +258,8 @@ describe '?', ()->
     # chain = hc.create()
 
     chain = hc() # return function
-      .uncaughtException (err)-> # Error를 수신받을 callback이 없을때 처리함. ex> observer나 다른 체인으로부터 받을떄
+      # .uncaughtException는 의미 없음, callback이 있는지 없는지에 따라 예외처리on/off하는게 더 불확실함.
+      # .uncaughtException (err)-> # Error를 수신받을 callback이 없을때 처리함. ex> observer나 다른 체인으로부터 받을떄
       .reactTo hc.hook.of hc.dynamo.ser messages... # Input Queue에 넣고 시작함. messages를 하나씩 처리하도록 함 Serial? Parallel? 기본은 직렬, 하나씩 끝내자
       .reactTo hc.hook.of hc.dynamo.par messages... # 메시지를 동시에 뿌려버린다.
       .reactTo hc.hook.event src, 'event_name'
