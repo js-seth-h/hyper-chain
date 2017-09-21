@@ -87,10 +87,12 @@ createExecuteContext = (internal_fns, _callback)->
         [_resolve, _reject] = [resolve, reject]   
       exe_ctx.trackingPromise name_at_group, p
 
+      [name, group] =_.split name_at_group, '@'
       _done = (err, args...)->
         debug '_done', err, args...
         return _reject err if err  
-        _resolve args
+        _resolve args      
+        exe_ctx.remember name, value
       _done.catch = (fn)->
         return (err, args...)->
           return _done err if err 
@@ -105,7 +107,7 @@ createExecuteContext = (internal_fns, _callback)->
     trackingPromise: (name_at_group, promise)->
       [name, group] =_.split name_at_group, '@'
       if _.isEmpty name
-        throw new Error 'name of .async() is required'  
+        throw new Error 'name of asyncTask is required'  
       if exe_ctx.promises[name]
         throw new Error 'name must be uniq' 
 
