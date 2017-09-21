@@ -1,6 +1,6 @@
 {
   "name": "hyper-chain",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "function builder for reactive programing. support promise, node-callback and designed for robust error handling. ",
   "main": "lib",
   "scripts": {
