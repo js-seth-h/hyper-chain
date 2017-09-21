@@ -170,6 +170,21 @@ applyChainExtender = (chain, internal_fns)->
       fn.call exe_ctx, exe_ctx.cur, a_done
       exe_ctx.resume() 
     return chain
+
+  chain.await = (name_at_group, fn)->  
+    internal_fns.push (exe_ctx)->
+      a_done = exe_ctx.createAsyncPoint name_at_group
+      fn.call exe_ctx, exe_ctx.cur, a_done
+      _ok = ()-> 
+        exe_ctx.resume()
+      _fail = (err)->
+        exe_ctx.error = err 
+        exe_ctx.resume() 
+        
+      [name, group] =_.split name_at_group, '@'    
+      task_promise = exe_ctx.getMergedPromise name
+      task_promise.then _ok, _fail 
+    return chain
     
   chain.makePromise = (name_at_group, fn)->  
     internal_fns.push (exe_ctx)-> 

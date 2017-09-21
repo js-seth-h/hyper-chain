@@ -188,6 +188,23 @@ describe '비동기 .async, .wait .makePromise', ()->
       expect(execute_context.cur).to.be.eql ['async_return']
       done()
 
+  it 'when .await, then read value from stroage', (done)->
+
+    chain = hc()
+      .map (cur)-> 0
+      .await 'test', (cur, a_done)->
+        _dfn = ()->
+          a_done null, 'async_return'
+        setTimeout _dfn, 50
+      .map (cur)->
+        {test} = @recall() 
+        return test
+
+    chain null, (err, feedback, execute_context)->
+      expect(err).to.not.exist
+      expect(execute_context.cur).to.be.eql ['async_return']
+      done()
+
   it 'when .async & .wait but occur Error, then callback get error', (done)->
 
     chain = hc()
