@@ -258,6 +258,10 @@ hyper_chain = ()->
       exe_ctx.input = input
       exe_ctx.next input
     return exe_ctx
+    
+  chain.invoke = (input, _cb)->
+    return chain input, _cb
+  
 
   chain.throwIn = (err)->
     exe_ctx = createExecuteContext internal_fns
@@ -270,7 +274,7 @@ hyper_chain = ()->
   chain.reactTo = (hook)->
     hook.on chain
     return chain
-
+    
   applyChainExtender chain, internal_fns 
   return chain
 
