@@ -1,16 +1,16 @@
 _ = require 'lodash'
 hc = require './chain'
-debug = require('debug')('hc.dynamo')
+debug = require('debug')('hc.Boxlet')
 EventEmitter = require('events')
 ###
 제 1 목적은 능동성을 확보하는것.
 
-Dynamo 는 EventEmitter, Promise와 같은 선상에 있는 능동체이다
+Boxlet 는 EventEmitter, Promise와 같은 선상에 있는 능동체이다
 또한 상태, 저장공간을 가진다.
   (Reducer와 차이가 먼지 고민하기.. 쩝)
-함수의 흐름은 Chain으로 해결한다. <--> 그러면 Dynamo는 무엇인가?
+함수의 흐름은 Chain으로 해결한다. <--> 그러면 Boxlet는 무엇인가?
   > program = user defined data + user defined operation
-  > 단순히 데이터인가? 그렇지 않다. Dynamo는 ADT라고 봐야한다.
+  > 단순히 데이터인가? 그렇지 않다. Boxlet는 ADT라고 봐야한다.
   > 즉 데이터 + 연산의 모임.
   > 그런데 기본제공되는, 널리 쓰이는 사례일 뿐이다. 그럼 뭘 구현해야하지?
   > 스트림은 OS에 규정된 실체를 다룬다. 파일, 네트워크, 파이프등...
@@ -19,16 +19,16 @@ Dynamo 는 EventEmitter, Promise와 같은 선상에 있는 능동체이다
   >> 이거자체가 체인... ah...
   > 맥락에 의한 확장도 가능은한데..?(과거 데이터를 이용하는것뿐이지만..) 
   >> 체인에서 외부 요소를 접근하기로 했지...
-  >> 그러고보니 par,ser Dynamo자체도 체인으로 정의를 해버렸네.. 흠..
+  >> 그러고보니 par,ser Boxlet자체도 체인으로 정의를 해버렸네.. 흠..
 
 But 고정된 데이터 저장소,버퍼등 
 DFD의 흐름이 아니라 다양한 크기의 저장소에 집중한다.
 
-Dynamo는 하나의 핸들러를 가진다.
+Boxlet는 하나의 핸들러를 가진다.
   > 다수의 핸들러를 상황에 맞춰서운용하면 이미 커스텀 모듈급
   
 ###
-class Dynamo extends EventEmitter
+class Boxlet extends EventEmitter
   constructor: ()->
     @routine = hc()
   setDataHandler: (@ext_fn)-> 
@@ -39,8 +39,8 @@ class Dynamo extends EventEmitter
       callback null, null
 
 
-Dynamo.Fixed =
-class FixedDynamo extends Dynamo
+Boxlet.Fixed =
+class FixedBoxlet extends Boxlet
   constructor: (@data)->
     super()
     @feedbacks = _.map @data, (d)-> undefined
@@ -49,36 +49,36 @@ class FixedDynamo extends Dynamo
     self = this
     @routine {}, (err)->
       callback err, self
-
-Dynamo.Flex = # reducer와 코드 구조를 정리하는 것을 고민하자.
-class FlexDynamo extends Dynamo
-  constructor: (@opt)->
-    super()
-    @queue = [] 
-    @afterHandling = @opt.afterHandling
-    @getEvictable = @opt.getEvictable 
-    
-    if @afterHandling
-      @afterHandling = (args...)=> @afterHandling args... 
-    unless @getEvictable
-      throw new Error "getEvictable is required"
-    
-    if @opt.check.put 
-      @on 'put', ()=> @check()
-      
-  put: (data)->
-    @queue.push data
-    @emit 'put', this
-
-  check: ()->
-    data = @getEvictable this
-    if data
-      @doDataHandling data, @afterHandling or undefined
-    else 
-      @emit 'pending', this
-  # afterHandling: (err)->    
-  # getEvictable: ()->
-  #   throw new Error 'Not Implement'  
+# 
+# Boxlet.Flex = # reducer와 코드 구조를 정리하는 것을 고민하자.
+# class FlexBoxlet extends Boxlet
+#   constructor: (@opt)->
+#     super()
+#     @queue = [] 
+#     @afterHandling = @opt.afterHandling
+#     @getEvictable = @opt.getEvictable 
+# 
+#     if @afterHandling
+#       @afterHandling = (args...)=> @afterHandling args... 
+#     unless @getEvictable
+#       throw new Error "getEvictable is required"
+# 
+#     if @opt.check.put 
+#       @on 'put', ()=> @check()
+# 
+#   put: (data)->
+#     @queue.push data
+#     @emit 'put', this
+# 
+#   check: ()->
+#     data = @getEvictable this
+#     if data
+#       @doDataHandling data, @afterHandling or undefined
+#     else 
+#       @emit 'pending', this
+#   # afterHandling: (err)->    
+#   # getEvictable: ()->
+#   #   throw new Error 'Not Implement'  
 
 class Semaphore
   constructor: (max)->
@@ -101,9 +101,9 @@ class Semaphore
     @queue = [] 
 
 
-Dynamo.par = 
-Dynamo.parallel = (data)-> 
-  d = new FixedDynamo data 
+Boxlet.par = 
+Boxlet.parallel = (data)-> 
+  d = new FixedBoxlet data 
   _.forEach data, (datum, inx)->
     d.routine.async inx, (cur, done)->
       d.doDataHandling datum, (err, feedback)->
@@ -115,9 +115,9 @@ Dynamo.parallel = (data)->
   return d
 
 
-Dynamo.nPar = 
-Dynamo.nParallel = (concurrent, data)-> 
-  d = new FixedDynamo data 
+Boxlet.nPar = 
+Boxlet.nParallel = (concurrent, data)-> 
+  d = new FixedBoxlet data 
   s = new Semaphore concurrent 
   _.forEach data, (datum, inx)->
     d.routine.async inx, (cur, done)->
@@ -132,12 +132,12 @@ Dynamo.nParallel = (concurrent, data)->
   d.routine.wait() 
   return d
 
-Dynamo.ser =
-Dynamo.serial = (data)->
-  d = new FixedDynamo data 
+Boxlet.ser =
+Boxlet.serial = (data)->
+  d = new FixedBoxlet data 
   _.forEach data, (datum, inx)->
     d.routine.async inx, (cur, done)->
-      debug 'dynamo.fire', datum
+      debug 'Boxlet.fire', datum
       d.doDataHandling datum, (err, feedback)->
         debug 'done a serial', err, feedback
         d.feedbacks[inx] = feedback
@@ -146,4 +146,4 @@ Dynamo.serial = (data)->
     d.routine.wait() 
   return d
 
-module.exports = exports = Dynamo
+module.exports = exports = Boxlet

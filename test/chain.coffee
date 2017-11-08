@@ -185,7 +185,8 @@ describe '비동기 .async, .wait .makePromise', ()->
 
     chain null, (err, feedback, execute_context)->
       expect(err).to.not.exist
-      expect(execute_context.cur).to.be.eql ['async_return']
+      expect(execute_context.cur).to.be.eql 'async_return'
+      expect(execute_context.recall('test[]')).to.be.eql ['async_return']
       done()
 
   it 'when .await, then read value from stroage', (done)->
@@ -201,8 +202,9 @@ describe '비동기 .async, .wait .makePromise', ()->
         return test
 
     chain null, (err, feedback, execute_context)->
-      expect(err).to.not.exist
-      expect(execute_context.cur).to.be.eql ['async_return']
+      expect(err).to.not.exist 
+      expect(execute_context.cur).to.be.eql 'async_return'
+      expect(execute_context.recall('test[]')).to.be.eql ['async_return']
       done()
 
   it 'when .async & .wait but occur Error, then callback get error', (done)->

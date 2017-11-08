@@ -91,8 +91,10 @@ createExecuteContext = (internal_fns, _callback)->
       _done = (err, args...)->
         debug '_done', err, args...
         return _reject err if err  
-        _resolve args      
+        value = args[0]
+        _resolve value      
         exe_ctx.remember name, value
+        exe_ctx.remember name + '[]', args
       _done.catch = (fn)->
         return (err, args...)->
           return _done err if err 
