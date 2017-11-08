@@ -207,6 +207,22 @@ describe '비동기 .async, .wait .makePromise', ()->
       expect(execute_context.recall('test[]')).to.be.eql ['async_return']
       done()
 
+  it 'when anonymous .await, then use function index as name', (done)->
+    chain = hc()
+      .map (cur)-> 0
+      .await (cur, a_done)->
+        _dfn = ()->
+          a_done null, 'async_return'
+        setTimeout _dfn, 50
+      .map (cur)->
+        return @recall()["1"]
+
+    chain null, (err, feedback, execute_context)->
+      expect(err).to.not.exist 
+      expect(execute_context.cur).to.be.eql 'async_return'
+      expect(execute_context.recall('1[]')).to.be.eql ['async_return']
+      done()
+
   it 'when .async & .wait but occur Error, then callback get error', (done)->
 
     chain = hc()

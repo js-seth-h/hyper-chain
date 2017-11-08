@@ -126,7 +126,8 @@ createExecuteContext = (internal_fns, _callback)->
 
 
 
-applyChainExtender = (chain, internal_fns)-> 
+applyChainExtender = (chain, internal_fns)->  
+    
   chain.do = (fn)->
     internal_fns.push (exe_ctx)->
       fn.call exe_ctx, exe_ctx.cur 
@@ -176,6 +177,10 @@ applyChainExtender = (chain, internal_fns)->
     return chain
 
   chain.await = (name_at_group, fn)->  
+    unless fn
+      fn = name_at_group
+      name_at_group = internal_fns.length.toString()
+      # console.log 'anonymous_awiat', name_at_group, fn
     internal_fns.push (exe_ctx)->
       a_done = exe_ctx.createAsyncPoint name_at_group
       fn.call exe_ctx, exe_ctx.cur, a_done
