@@ -101,7 +101,7 @@ describe 'hook.promise', ()->
       _reject = reject
     chain = hc()
     chain.catch (err, cur)->
-      # debug 'err, cur', err, cur
+      # console.log 'err, cur', err, cur
       expect(err).to.be.exist
       done()
 

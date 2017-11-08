@@ -60,9 +60,41 @@ describe 'change data in process', ()->
         return 1
       .do (cur)->
         expect(cur).to.be.equal 1
+        done() 
+    chain 2 
+    
+  it 'when start no args, then accept arity', (done)-> 
+    chain = hc()
+      .do (cur)->
+        throw new Error("Wrong") if cur
+      .map ()->
+        return 18
+      .do (cur)->
+        expect(cur).to.be.equal 18
         done()
+    chain()
 
+  it 'when start arr, then accept arity', (done)-> 
+    chain = hc()
+      .do (cur, cur2)->
+        throw new Error("Wrong") if cur > cur2
+      .map (cur, cur2)->
+        return cur * cur2
+      .do (cur)->
+        expect(cur).to.be.equal 18
+        done()
+    chain 2, 9
+    
+  it 'when passing arr, then change arity', (done)-> 
+    chain = hc()
+      .map (cur)->
+        return [11, 7]
+      .do (cur, cur2)->
+        expect(cur).to.be.equal 11
+        expect(cur2).to.be.equal 7
+        done() 
     chain 2
+
 
 describe 'chain can be stop by filter', ()-> 
   it 'when .filter - return true, then not stop', (done)-> 

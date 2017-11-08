@@ -4,6 +4,10 @@ _ = require 'lodash'
 
 ASAP = (fn)-> process.nextTick fn
 
+assureArray = (value)->
+  return [] if value is undefined
+  return value if Array.isArray(value)
+  return [ value ]
 
 createExecuteContext = (internal_fns, _callback)-> 
   _KV_ = {}
@@ -33,8 +37,9 @@ createExecuteContext = (internal_fns, _callback)->
       # user defined name: []
       # user defined group: []
 
-    next: (data)->
-      exe_ctx.cur = data 
+    next: (args)->
+      exe_ctx.cur = args[0]
+      exe_ctx.curArr = args 
       exe_ctx.resume()
  
     resume: ()-> 
@@ -129,21 +134,21 @@ createExecuteContext = (internal_fns, _callback)->
 applyChainExtender = (chain, internal_fns)->  
     
   chain.do = (fn)->
-    internal_fns.push (exe_ctx)->
-      fn.call exe_ctx, exe_ctx.cur 
+    internal_fns.push (exe_ctx)-> 
+      fn.call exe_ctx, exe_ctx.curArr... 
       exe_ctx.resume()
     return chain
 
   chain.map = (fn)->
     internal_fns.push (exe_ctx)->
       # debug '.map', exe_ctx
-      new_cur = fn.call exe_ctx, exe_ctx.cur 
-      exe_ctx.next new_cur
+      new_cur = fn.call exe_ctx, exe_ctx.curArr... 
+      exe_ctx.next assureArray(new_cur)
     return chain
 
   chain.filter = (fn)->
     internal_fns.push (exe_ctx)->
-      can_continue = fn.call exe_ctx, exe_ctx.cur 
+      can_continue = fn.call exe_ctx, exe_ctx.curArr... 
       if can_continue
         exe_ctx.resume()
       else  
@@ -152,8 +157,8 @@ applyChainExtender = (chain, internal_fns)->
 
   chain.catch = (fn)-> 
     _catcher = (exe_ctx)-> 
-      # debug 'call .catch with', exe_ctx.error
-      fn.call exe_ctx, exe_ctx.error, exe_ctx.cur 
+      # console.log 'call .catch with', exe_ctx.error, exe_ctx.curArr
+      fn.call exe_ctx, exe_ctx.error, exe_ctx.curArr... 
       exe_ctx.error = null
       exe_ctx.resume() 
     _catcher.accept_error = true
@@ -162,7 +167,7 @@ applyChainExtender = (chain, internal_fns)->
 
   chain.finally = (fn)-> 
     _catcher = (exe_ctx)-> 
-      fn.call exe_ctx, exe_ctx.error, exe_ctx.cur 
+      fn.call exe_ctx, exe_ctx.error, exe_ctx.curArr... 
       # exe_ctx.error = null
       exe_ctx.resume() 
     _catcher.accept_error = true
@@ -172,7 +177,8 @@ applyChainExtender = (chain, internal_fns)->
   chain.async = (name_at_group, fn)->  
     internal_fns.push (exe_ctx)->
       a_done = exe_ctx.createAsyncPoint name_at_group
-      fn.call exe_ctx, exe_ctx.cur, a_done
+
+      fn.call exe_ctx, exe_ctx.curArr..., a_done
       exe_ctx.resume() 
     return chain
 
@@ -183,7 +189,7 @@ applyChainExtender = (chain, internal_fns)->
       # console.log 'anonymous_awiat', name_at_group, fn
     internal_fns.push (exe_ctx)->
       a_done = exe_ctx.createAsyncPoint name_at_group
-      fn.call exe_ctx, exe_ctx.cur, a_done
+      fn.call exe_ctx, exe_ctx.curArr..., a_done
       _ok = ()-> 
         exe_ctx.resume()
       _fail = (err)->
@@ -197,7 +203,7 @@ applyChainExtender = (chain, internal_fns)->
     
   chain.makePromise = (name_at_group, fn)->  
     internal_fns.push (exe_ctx)-> 
-      promise = fn.call exe_ctx, exe_ctx.cur
+      promise = fn.call exe_ctx, exe_ctx.curArr...
       exe_ctx.trackingPromise name_at_group, promise
       exe_ctx.resume() 
     return chain
@@ -223,7 +229,7 @@ applyChainExtender = (chain, internal_fns)->
 
   chain.feedback = (fn)->
     internal_fns.push (exe_ctx)->
-      fn.call exe_ctx, exe_ctx.cur, exe_ctx.feedback, exe_ctx
+      fn.call exe_ctx, exe_ctx.curArr..., exe_ctx.feedback, exe_ctx
       exe_ctx.resume()
     return chain
       
@@ -235,7 +241,7 @@ applyChainExtender = (chain, internal_fns)->
 
   chain.delayIf = (ms, if_fn)->
     internal_fns.push (exe_ctx)->
-      yn = if_fn.call exe_ctx, exe_ctx.cur
+      yn = if_fn.call exe_ctx, exe_ctx.curArr...
       if yn 
         _dfn = ()-> exe_ctx.resume()
         setTimeout _dfn, ms
@@ -245,26 +251,32 @@ applyChainExtender = (chain, internal_fns)->
 
   chain.reduce = (fn)-> 
     internal_fns.push (exe_ctx)->
-      fn.call exe_ctx, exe_ctx.cur, exe_ctx 
+      fn.call exe_ctx, exe_ctx.curArr..., exe_ctx 
     return chain
 
 
 hyper_chain = ()-> 
   internal_fns = []
-  chain = (input, _callback)->
+  chain = (inputs..., _callback)->
+    unless _.isFunction _callback
+      inputs.push _callback
+      _callback = undefined
+      
     exe_ctx = createExecuteContext internal_fns, _callback
     ASAP ()->
       # exe_ctx.resume()
-      exe_ctx.input = input
-      exe_ctx.next input
+      exe_ctx.inputs = inputs
+      exe_ctx.next inputs
     return exe_ctx
     
-  chain.invoke = (input, _cb)->
-    return chain input, _cb
+  chain.invoke = (inputs..., _cb)->
+    return chain inputs..., _cb
   
 
   chain.throwIn = (err)->
     exe_ctx = createExecuteContext internal_fns
+    exe_ctx.cur = undefined
+    exe_ctx.curArr = []
     exe_ctx.error = err 
     # debug 'throwIn', exe_ctx
     ASAP ()->
@@ -302,7 +314,7 @@ hyper_chain.reducer = (opt)->
     reduced_data = opt.reduce reducer_self.acc
     reducer_self.acc = []
 
-    reducer_self.pending_context.next reduced_data
+    reducer_self.pending_context.next [ reduced_data ]
     reducer_self.pending_context = null
 
 
