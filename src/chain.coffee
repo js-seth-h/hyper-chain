@@ -40,6 +40,7 @@ createExecuteContext = (internal_fns, _callback)->
     next: (args)->
       exe_ctx.cur = args[0]
       exe_ctx.curArr = args 
+      debug 'next args', exe_ctx.curArr, exe_ctx.cur
       exe_ctx.resume()
  
     resume: ()-> 
@@ -257,10 +258,13 @@ applyChainExtender = (chain, internal_fns)->
 
 hyper_chain = ()-> 
   internal_fns = []
-  chain = (inputs..., _callback)->
-    unless _.isFunction _callback
-      inputs.push _callback
-      _callback = undefined
+  chain = (inputs...)-> #inputs..., _callback)->
+  
+    _callback = undefined
+    if _.isFunction _.last inputs
+      _callback = inputs.pop()
+      # inputs.push _callback
+      # _callback = undefined
       
     exe_ctx = createExecuteContext internal_fns, _callback
     ASAP ()->

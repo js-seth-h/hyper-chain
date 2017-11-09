@@ -366,6 +366,18 @@ describe '시간제어 .delay .delayIf ', ()->
       expect(t_gap).be.below 50 - time_accuracy
       done()
 
+ 
+describe 'complex usage', ()->
+  it 'run without args & callback, await take only callback function', (it_done)->
+    do hc()
+      .do ()->
+        return 'test'
+      .await "log", (done)->
+        console.log 'awit', arguments
+        expect(done).to.be.a('function')
+        done() 
+      .do ()->
+        it_done()
 describe '처리 합병 .reduce', ()->
   
   it 'when .reduce in 50 ms & call 1 time & not needFlush. then delayed and go', (done)-> 
