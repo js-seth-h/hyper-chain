@@ -366,7 +366,21 @@ describe '시간제어 .delay .delayIf ', ()->
       expect(t_gap).be.below 50 - time_accuracy
       done()
 
- 
+
+describe '.endWith ', ()->
+  it 'chain is stop & return value as feedback', (done)->  
+    
+    fn = hc()
+      .do ()->
+        @endWith "test-end"
+      .do ()->
+        throw new Error "Never Come Here"
+        
+    fn (err, feedback)->
+      expect(err).not.exist
+      expect(feedback).to.eql 'test-end'
+      done()
+      
 describe 'complex usage', ()->
   it 'run without args & callback, await take only callback function', (it_done)->
     do hc()

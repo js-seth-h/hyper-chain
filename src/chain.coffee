@@ -70,6 +70,10 @@ createExecuteContext = (internal_fns, _callback)->
         debug 'resume -> catch error', exe_ctx.step_inx, err.toString()
         exe_ctx.resume()
       
+    endWith: (feedback)->
+      # 배열반환은 필요없다. 이자체로 함수 취급임으로 한상 단수 반환
+      exe_ctx.feedback = feedback
+      exe_ctx.exit 'finished'
 
     exit: (exit_status)-> 
       p = new Promise (resolve, reject)-> 
@@ -87,7 +91,7 @@ createExecuteContext = (internal_fns, _callback)->
       return _KV_[name]
     remember: (name, value)->
       _KV_[name] = value
-    createAsyncPoint :(name_at_group)-> 
+    createSynchronizePoint :(name_at_group)-> 
       _resolve = _reject = null
       p = new Promise (resolve, reject)->
         [_resolve, _reject] = [resolve, reject]   
@@ -177,7 +181,7 @@ applyChainExtender = (chain, internal_fns)->
  
   chain.async = (name_at_group, fn)->  
     internal_fns.push (exe_ctx)->
-      a_done = exe_ctx.createAsyncPoint name_at_group
+      a_done = exe_ctx.createSynchronizePoint name_at_group
 
       fn.call exe_ctx, exe_ctx.curArr..., a_done
       exe_ctx.resume() 
@@ -189,7 +193,7 @@ applyChainExtender = (chain, internal_fns)->
       name_at_group = internal_fns.length.toString()
       # console.log 'anonymous_awiat', name_at_group, fn
     internal_fns.push (exe_ctx)->
-      a_done = exe_ctx.createAsyncPoint name_at_group
+      a_done = exe_ctx.createSynchronizePoint name_at_group
       fn.call exe_ctx, exe_ctx.curArr..., a_done
       _ok = ()-> 
         exe_ctx.resume()
