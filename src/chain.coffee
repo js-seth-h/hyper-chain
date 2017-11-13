@@ -3,11 +3,11 @@ debug =  require('debug')('hc')
 _ = require 'lodash'
 
 ASAP = (fn)-> process.nextTick fn
-
-assureArray = (value)->
-  return [] if value is undefined
-  return value if Array.isArray(value)
-  return [ value ]
+# 
+# assureArray = (value)->
+#   return [] if value is undefined
+#   return value if Array.isArray(value)
+#   return [ value ]
 
 createExecuteContext = (internal_fns, _callback)-> 
   _KV_ = {}
@@ -37,10 +37,10 @@ createExecuteContext = (internal_fns, _callback)->
       # user defined name: []
       # user defined group: []
 
-    next: (args)->
-      exe_ctx.cur = args[0]
-      exe_ctx.curArr = args 
-      debug 'next args', exe_ctx.curArr, exe_ctx.cur
+    next: (args_obj)->
+      exe_ctx.cur = args_obj.args[0]
+      exe_ctx.curArr = args_obj.args 
+      debug 'next args', exe_ctx.curArr, exe_ctx.cur, '<<', args_obj
       exe_ctx.resume()
  
     resume: ()-> 
@@ -148,7 +148,9 @@ applyChainExtender = (chain, internal_fns)->
     internal_fns.push (exe_ctx)->
       # debug '.map', exe_ctx
       new_cur = fn.call exe_ctx, exe_ctx.curArr... 
-      exe_ctx.next assureArray(new_cur)
+      unless new_cur instanceof Args
+        new_cur = new Args new_cur
+      exe_ctx.next new_cur
     return chain
 
   chain.filter = (fn)->
@@ -274,7 +276,7 @@ hyper_chain = ()->
     ASAP ()->
       # exe_ctx.resume()
       exe_ctx.inputs = inputs
-      exe_ctx.next inputs
+      exe_ctx.next new Args inputs...
     return exe_ctx
     
   chain.invoke = (inputs..., _cb)->
@@ -322,13 +324,20 @@ hyper_chain.reducer = (opt)->
     reduced_data = opt.reduce reducer_self.acc
     reducer_self.acc = []
 
-    reducer_self.pending_context.next [ reduced_data ]
+     
+    unless reduced_data instanceof Args
+      reduced_data = new Args reduced_data
+      
+    reducer_self.pending_context.next reduced_data
     reducer_self.pending_context = null
 
 
   reducer_self.acc = []
   return reducer_self
 
+
+hyper_chain.Args = class Args
+  constructor : (@args...)->
 
 module.exports = exports = hyper_chain
 

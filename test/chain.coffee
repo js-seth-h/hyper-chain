@@ -85,10 +85,10 @@ describe 'change data in process', ()->
         done()
     chain 2, 9
     
-  it 'when passing arr, then change arity', (done)-> 
+  it 'when passing hc.Args, then change arity', (done)-> 
     chain = hc()
       .map (cur)->
-        return [11, 7]
+        return new hc.Args 11, 7
       .do (cur, cur2)->
         expect(cur).to.be.equal 11
         expect(cur2).to.be.equal 7
