@@ -38,7 +38,6 @@ createExecuteContext = (internal_fns, _callback)->
       # user defined group: []
 
     next: (args_obj)->
-      exe_ctx.cur = args_obj.args[0]
       exe_ctx.curArr = args_obj.args 
       debug 'next args', exe_ctx.curArr, exe_ctx.cur, '<<', args_obj
       exe_ctx.resume()
@@ -152,6 +151,10 @@ applyChainExtender = (chain, internal_fns)->
         new_cur = new Args new_cur
       exe_ctx.next new_cur
     return chain
+    
+  chain.dropArgs = ()->
+    internal_fns.push (exe_ctx)->
+      exe_ctx.next new Args
 
   chain.filter = (fn)->
     internal_fns.push (exe_ctx)->
@@ -285,7 +288,6 @@ hyper_chain = ()->
 
   chain.throwIn = (err)->
     exe_ctx = createExecuteContext internal_fns
-    exe_ctx.cur = undefined
     exe_ctx.curArr = []
     exe_ctx.error = err 
     # debug 'throwIn', exe_ctx
@@ -339,6 +341,7 @@ hyper_chain.reducer = (opt)->
 hyper_chain.Args = class Args
   constructor : (@args...)->
 
+Args.Empty = new Args()
 module.exports = exports = hyper_chain
 
 
