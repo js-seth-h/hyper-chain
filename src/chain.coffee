@@ -26,7 +26,8 @@ createExecuteContext = (internal_fns, _callback)->
     feedback: {} # callback으로 돌아가는 값
     step_inx: -1
     exit_status: undefined
-      # undefined: 아직 안끝남
+      # undefined: 실행중
+      # exiting - 끝내는 작업 진행
       # error - 에러가 발생
       # filtered - filter 되어 끝남
       # reduced - reduce 되어 끝남
@@ -46,13 +47,14 @@ createExecuteContext = (internal_fns, _callback)->
       # internal_fns를 꺼내서 수행하는 유일한 주체다.
       # 절대 병렬 호출이 되서는 안됨
       try
+        return if exe_ctx.exit_status
         #다음 스탭으로
         exe_ctx.step_inx++
 
         # 체인의 끝이면, 종료
         if exe_ctx.step_inx >= internal_fns.length
           debug 'resume -> exit with no error'
-          return exe_ctx.exit 'finished'
+          return exe_ctx._exit 'finished'
 
 
         _fn = internal_fns[exe_ctx.step_inx]
@@ -74,9 +76,10 @@ createExecuteContext = (internal_fns, _callback)->
       # 배열반환은 필요없다. HC()는 함수 취급임으로 항상 단일 값 반환
       # args 길이를 확인하기 위해서 처리.
       exe_ctx.feedback = args[0] if args.length > 0
-      exe_ctx.exit 'finished'
+      exe_ctx._exit 'finished'
 
-    exit: (exit_status)->
+    _exit: (exit_status)->
+      exe_ctx.exit_status = "exiting"
       p = new Promise (resolve, reject)->
         return reject exe_ctx.error if exe_ctx.error
         task_promise = exe_ctx.getMergedPromise()
@@ -164,7 +167,7 @@ applyChainExtender = (chain, internal_fns)->
       if can_continue
         exe_ctx.resume()
       else
-        exe_ctx.exit 'filtered'
+        exe_ctx._exit 'filtered'
     return chain
 
   chain.catch = (fn)->
@@ -318,7 +321,7 @@ hyper_chain.reducer = (opt)->
 
   reducer_self.reducedPending = ()->
     return unless reducer_self.pending_context
-    reducer_self.pending_context.exit 'reduced'
+    reducer_self.pending_context._exit 'reduced'
     reducer_self.pending_context = null
 
   reducer_self.continuePending = ()->

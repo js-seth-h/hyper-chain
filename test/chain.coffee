@@ -392,7 +392,7 @@ describe '.evac ', ()->
       .do ()->
         @evac "test-end"
       .do ()->
-        throw new Error "Never Come Here"
+        done new Error "Never Come Here"
 
     fn (err, feedback)->
       expect(err).not.exist
@@ -403,8 +403,11 @@ describe '.evac ', ()->
     fn = hc()
       .do ()->
         @evac null
+      .await (cb)->
+        setTimeout cb, 20
+        done new Error "Never Come Here"
       .do ()->
-        throw new Error "Never Come Here"
+        done new Error "Never Come Here"
     fn (err, feedback)->
       expect(err).not.exist
       expect(feedback).to.eql null
@@ -415,7 +418,7 @@ describe '.evac ', ()->
       .do ()->
         @evac undefined
       .do ()->
-        throw new Error "Never Come Here"
+        done new Error "Never Come Here"
     fn (err, feedback)->
       expect(err).not.exist
       expect(feedback).to.eql undefined
@@ -429,7 +432,7 @@ describe '.evac ', ()->
       .do ()->
         @evac()
       .do ()->
-        throw new Error "Never Come Here"
+        done new Error "Never Come Here"
 
     fn (err, feedback)->
       expect(err).not.exist
