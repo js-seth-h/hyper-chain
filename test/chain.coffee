@@ -217,6 +217,19 @@ describe 'error handling', ()->
     chain 0, (err)->
       throw new Error 'JUST'
 
+  it 'without  Error, then skip .catch ', (done)->
+    chain = hc()
+      .map (cur)-> 1
+      # .do (cur)-> throw new Error 'Just'
+      .catch (err, cur)->
+        done new Error "Never Come Here"
+      .map (cur)-> 2
+
+    chain 0, (err, feedback, execute_context)->
+      expect(err).to.not.exist
+      expect(execute_context.curArr[0]).to.be.equal 2
+      # expect(execute_context.exit_status).to.be.equal 'filtered'
+      done()
 
 describe '비동기 .async, .wait .makePromise', ()->
   it 'when .async & .wait, then read value from stroage', (done)->

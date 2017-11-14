@@ -173,6 +173,8 @@ applyChainExtender = (chain, internal_fns)->
   chain.catch = (fn)->
     _catcher = (exe_ctx)->
       # console.log 'call .catch with', exe_ctx.error, exe_ctx.curArr
+      unless exe_ctx.error
+        return exe_ctx.resume()
       fn.call exe_ctx, exe_ctx.error, exe_ctx.curArr...
       exe_ctx.error = null
       exe_ctx.resume()
