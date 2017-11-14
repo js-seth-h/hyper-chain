@@ -30,13 +30,12 @@ Boxlet는 하나의 핸들러를 가진다.
 ###
 class Boxlet extends EventEmitter
   constructor: ()->
-    @routine = hc()
-  setDataHandler: (@ext_fn)-> 
-  doDataHandling: (data, callback)->
-    if @ext_fn
-      return @ext_fn data, callback
-    else
-      callback null, null
+    @routine = hc() 
+    @handler = hc()
+  setHandler: (@handler)-> 
+  setDataHandler: (@handler)-> 
+  doHandling: (data, callback)->
+    return @handler data, callback
 
 
 Boxlet.Fixed =
@@ -47,7 +46,7 @@ class FixedBoxlet extends Boxlet
     @errors = _.map @data, (d)-> undefined
   start: (callback)->
     self = this
-    @routine {}, (err)->
+    @routine (err)->
       callback err, self
 # 
 # Boxlet.Flex = # reducer와 코드 구조를 정리하는 것을 고민하자.
@@ -73,7 +72,7 @@ class FixedBoxlet extends Boxlet
 #   check: ()->
 #     data = @getEvictable this
 #     if data
-#       @doDataHandling data, @afterHandling or undefined
+#       @doHandling data, @afterHandling or undefined
 #     else 
 #       @emit 'pending', this
 #   # afterHandling: (err)->    
@@ -105,8 +104,8 @@ Boxlet.par =
 Boxlet.parallel = (data)-> 
   d = new FixedBoxlet data 
   _.forEach data, (datum, inx)->
-    d.routine.async inx, (cur, done)->
-      d.doDataHandling datum, (err, feedback)->
+    d.routine.async inx, (done)->
+      d.doHandling datum, (err, feedback)->
         # debug 'done a parallel', err, feedback
         d.feedbacks[inx] = feedback
         d.errors[inx] = err
@@ -120,9 +119,9 @@ Boxlet.nParallel = (concurrent, data)->
   d = new FixedBoxlet data 
   s = new Semaphore concurrent 
   _.forEach data, (datum, inx)->
-    d.routine.async inx, (cur, done)->
+    d.routine.async inx, (done)->
       s.enter ()->
-        d.doDataHandling datum, (err, feedback)->
+        d.doHandling datum, (err, feedback)->
           s.leave()
           # debug 'done a parallel', err, feedback
           d.feedbacks[inx] = feedback
@@ -136,9 +135,9 @@ Boxlet.ser =
 Boxlet.serial = (data)->
   d = new FixedBoxlet data 
   _.forEach data, (datum, inx)->
-    d.routine.async inx, (cur, done)->
+    d.routine.async inx, (done)->
       debug 'Boxlet.fire', datum
-      d.doDataHandling datum, (err, feedback)->
+      d.doHandling datum, (err, feedback)->
         debug 'done a serial', err, feedback
         d.feedbacks[inx] = feedback
         d.errors[inx] = err

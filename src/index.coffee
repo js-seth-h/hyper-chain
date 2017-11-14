@@ -1,5 +1,5 @@
 
 module.exports = exports = require './chain'
 
-exports.hook = require './hook'
-exports.Boxlet = require './Boxlet'
+exports.Hook = require './hook'
+exports.Boxlet = require './boxlet'

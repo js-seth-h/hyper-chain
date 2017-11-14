@@ -50,8 +50,8 @@ class Hook
 Hook.of = (src, opt)->
   unless opt
     opt = 
-      setter : 'setDataHandler'
-      unsetter : 'setDataHandler'
+      setter : 'setHandler'
+      unsetter : 'setHandler'
   return h = new Hook
     afterOn: ()->
       src[opt.setter] h.tow
