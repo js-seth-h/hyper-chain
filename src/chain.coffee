@@ -218,7 +218,8 @@ applyChainExtender = (chain, internal_fns)->
       task_promise.then _ok, _fail
     return chain
 
-  chain.makePromise = (name_at_group, fn)->
+  # chain.makePromise =
+  chain.promise = (name_at_group, fn)->
     internal_fns.push (exe_ctx)->
       promise = fn.call exe_ctx, exe_ctx.curArr...
       exe_ctx.trackingPromise name_at_group, promise

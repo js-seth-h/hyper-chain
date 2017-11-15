@@ -12,7 +12,7 @@ Features와, 테스트 시나리오
   함수일것 = 호출이 가능할것.
   값제어 .do, .map
   처리 제어.filter
-  비동기 .async, .wait .makePromise
+  비동기 .async, .wait .promise
   에러 제어 .catch .finally
   반환 제어 .feedback
   시간제어 .delay .delayIf
@@ -231,7 +231,7 @@ describe 'error handling', ()->
       # expect(execute_context.exit_status).to.be.equal 'filtered'
       done()
 
-describe '비동기 .async, .wait .makePromise', ()->
+describe '비동기 .async, .wait .promise', ()->
   it 'when .async & .wait, then read value from stroage', (done)->
 
     chain = hc()
@@ -304,11 +304,11 @@ describe '비동기 .async, .wait .makePromise', ()->
       expect(err).to.exist
       done()
 
-  it 'when .async & .makePromise, then read value from stroage', (done)->
+  it 'when .async & .promise, then read value from stroage', (done)->
 
     chain = hc()
       .map (cur)-> 0
-      .makePromise 'test', (cur)->
+      .promise 'test', (cur)->
         new Promise (resolve, reject)->
           _dfn = ()->
             resolve 'resolve_return'
@@ -325,11 +325,11 @@ describe '비동기 .async, .wait .makePromise', ()->
       done()
 
 
-  it 'when .async & .makePromise but occur Error, then callback get error', (done)->
+  it 'when .async & .promise but occur Error, then callback get error', (done)->
 
     chain = hc()
       .map (cur)-> 0
-      .makePromise 'test', (cur)->
+      .promise 'test', (cur)->
         new Promise (resolve, reject)->
           _dfn = ()->
             reject new Error 'JUST'
