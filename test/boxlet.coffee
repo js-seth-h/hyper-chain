@@ -13,6 +13,7 @@ describe 'Boxlet.parallel', ()->
 
     box = new Boxlet()
       .puts [0...10]
+      .pullAll()
       .parallel()
 
     box.handler
@@ -31,6 +32,7 @@ describe 'Boxlet.serial', ()->
 
     box = new Boxlet()
       .puts [0...10]
+      .pullAll()
       .serial()
 
     last = -1
@@ -53,6 +55,7 @@ describe 'Boxlet.nParallel', ()->
 
   box = new Boxlet()
     .puts [0...10]
+    .pullAll()
     .parallel()
   box.handler
     .map (cur)-> cur * cur
@@ -66,6 +69,7 @@ describe 'Boxlet.nParallel', ()->
 
   box = new Boxlet()
     .puts [0...10]
+    .pullAll()
     .nParallel 2
 
   box.handler

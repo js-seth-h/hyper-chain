@@ -3,17 +3,20 @@ hc = require './chain'
 debug = require('debug')('hc.Boxlet2')
 
 ###
+
+Puller 계열
+  * Reduce 리듀싱 처리
+  * PullAll
+
+outer 계열
+
+Trigger 계열
 * Manual: 쭉기다리다가 명령이 오면 나감.
 * ASAP 들어오는 즉시 나감
 * Debounce: 지연된 시간내의 것을 모아서.
 * Interval: 지정된 간격으로 나감
 * Emittable : 특정 조건을 만족하여 나갈수 있을때
 
-.puller
-  * Reduce 리듀싱 처리
-
-
-.handleControl
 ###
 
 
@@ -27,9 +30,12 @@ class Boxlet
     @reset()
   reset: ()->
     reduce = null
-    @puller = hc() # 방출 제어 루틴.
-    @handler = hc()
-    @afterPut = hc()
+    @afterPut = hc() # event handler
+
+    @puller = hc() # 데이터 추출 루틴
+    @outer = hc() # 방출 제어 루틴.
+    @handler = hc() # 개별 방출 핸들러
+
     return this
   put: (item)->
     @data.push item
@@ -47,17 +53,18 @@ class Boxlet
   pullOut: (callback)->
     box = this
     _fn = hc()
-      .map ()->
-        list = box.data
-        box.data = []
-        return list
-      .await "data", (data, done)->
-        unless box.reduce
-          return done null, data
-        box.reduce data, done
+      .await "data", (done)->
+        box.puller box, done
+      #   list = box.data
+      #   box.data = []
+      #   return list
+      # .await "data", (data, done)->
+      #   unless box.reduce
+      #     return done null, data
+      #   box.reduce data, done
       .load "data"
       .await (data, done)->
-        box.puller data, done
+        box.outer data, done
     _fn (err)-> callback err, box
 
     return this
@@ -99,11 +106,25 @@ _proto Boxlet,
         box.tid = setTimeout _dfn, msec
     return box
 
+  pullAll: ()->
+    box = this
+    box.puller.do (box)->
+      list = box.data
+      box.data = []
+      @feedback.reset list
+    return box
+  reduce: (reduce_fn)->
+    box = this
+    box.puller.do (box)->
+      list = box.data
+      box.data = []
+      @feedback.reset reduce_fn list
+    return box
 
   par : ()-> @parallel()
   parallel : ()->
     box = this
-    box.puller.await (data, done)->
+    box.outer.await (data, done)->
       _fn = hc()
       box.feedbacks = _.map data, (d)-> undefined
       box.errors = _.map data, (d)-> undefined
@@ -120,7 +141,7 @@ _proto Boxlet,
   ser : ()-> @serial()
   serial : ()->
     box = this
-    box.puller.await (data, done)->
+    box.outer.await (data, done)->
       _fn = hc()
       box.feedbacks = _.map data, (d)-> undefined
       box.errors = _.map data, (d)-> undefined
@@ -134,25 +155,6 @@ _proto Boxlet,
         _fn.wait()
       _fn done
     return box
-#
-  # box.start = (callback)->
-  #   data = box.data
-  #   box.feedbacks = _.map data, (d)-> undefined
-  #   box.errors = _.map data, (d)-> undefined
-  #   box.puller = hc()
-  #   _.forEach data, (datum, inx)->
-  #     box.puller.async inx, (done)->
-  #       box.doHandling datum, (err, feedback)->
-  #         # debug 'done a parallel', err, feedback
-  #         box.feedbacks[inx] = feedback
-  #         box.errors[inx] = err
-  #         done err
-  #   box.puller.wait()
-  #   box.pullOut callback
-
-  # return box
-
-
 
 # for N-Parallel
 class Semaphore
@@ -180,7 +182,7 @@ _proto Boxlet,
   nParallel : (concurrent)->
     box = this
     s = new Semaphore concurrent
-    box.puller.await (data, done)->
+    box.outer.await (data, done)->
       _fn = hc()
       box.feedbacks = _.map data, (d)-> undefined
       box.errors = _.map data, (d)-> undefined
@@ -195,27 +197,5 @@ _proto Boxlet,
       _fn.wait()
       _fn done
     return box
-    #
-    # box = new Boxlet
-    # box.start = (callback)->
-    #   data = box.data
-    #   box.feedbacks = _.map data, (d)-> undefined
-    #   box.errors = _.map data, (d)-> undefined
-    #   box.puller = hc()
-    #
-    #   _.forEach data, (datum, inx)->
-    #     box.puller.async inx, (done)->
-    #       s.enter ()->
-    #         box.doHandling datum, (err, feedback)->
-    #           s.leave()
-    #           # debug 'done a parallel', err, feedback
-    #           box.feedbacks[inx] = feedback
-    #           box.errors[inx] = err
-    #           done err
-    #
-    #   box.puller.wait()
-    #   box.pullOut callback
-    # return box
-
 
 module.exports = exports = Boxlet
