@@ -113,12 +113,13 @@ _proto Boxlet,
       box.data = []
       @feedback.reset list
     return box
-  reduce: (reduce_fn)->
+  pullReduce: (reduce_fn)->
     box = this
     box.puller.do (box)->
       list = box.data
       box.data = []
-      @feedback.reset reduce_fn list
+      val = reduce_fn list
+      @feedback.reset [val]
     return box
 
   par : ()-> @parallel()
