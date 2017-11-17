@@ -51,6 +51,19 @@ describe 'chain is a function', ()->
       expect(execute_context.exit_status).to.be.equal 'finished'
       done()
 
+  it 'can clear', (done)->
+    chain = hc()
+      .do ()->
+        done new Error "Never Come Here"
+      .clear()
+      .feedbackExeContext()
+
+    chain (err,execute_context)->
+      expect(err).to.not.exist
+      expect(execute_context).a 'object'
+      expect(execute_context.exit_status).to.be.equal 'finished'
+      done()
+
 describe 'change data in process', ()->
   it 'when add .do, then not change current data', (done)->
     chain = hc()

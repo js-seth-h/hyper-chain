@@ -157,28 +157,31 @@ createExecuteContext = (internal_fns, _callback)->
 
 
 
-applyChainBuilder = (chain, internal_fns)->
+applyChainBuilder = (chain)->
 
+  chain.clear = ()->
+    chain._internal_fns = []
+    return chain
   chain.load = (var_name)->
-    internal_fns.push (exe_ctx)->
+    chain._internal_fns.push (exe_ctx)->
       val = exe_ctx.recall var_name
       exe_ctx.next new Args val
     return chain
   chain.store = (var_name)->
-    internal_fns.push (exe_ctx)->
+    chain._internal_fns.push (exe_ctx)->
       exe_ctx.remember var_name, exe_ctx.curArr...
       exe_ctx.remember var_name + "[]", exe_ctx.curArr
       exe_ctx.next new Args()
     return chain
 
   chain.do = (fn)->
-    internal_fns.push (exe_ctx)->
+    chain._internal_fns.push (exe_ctx)->
       fn.call exe_ctx, exe_ctx.curArr...
       exe_ctx.resume()
     return chain
 
   chain.map = (fn)->
-    internal_fns.push (exe_ctx)->
+    chain._internal_fns.push (exe_ctx)->
       # debug '.map', exe_ctx
       new_cur = fn.call exe_ctx, exe_ctx.curArr...
       unless new_cur instanceof Args
@@ -187,11 +190,11 @@ applyChainBuilder = (chain, internal_fns)->
     return chain
 
   chain.dropArgs = ()->
-    internal_fns.push (exe_ctx)->
+    chain._internal_fns.push (exe_ctx)->
       exe_ctx.next new Args
 
   chain.filter = (fn)->
-    internal_fns.push (exe_ctx)->
+    chain._internal_fns.push (exe_ctx)->
       can_continue = fn.call exe_ctx, exe_ctx.curArr...
       if can_continue
         exe_ctx.resume()
@@ -208,7 +211,7 @@ applyChainBuilder = (chain, internal_fns)->
       exe_ctx.error = null
       exe_ctx.resume()
     _catcher.accept_error = true
-    internal_fns.push _catcher
+    chain._internal_fns.push _catcher
     return chain
 
   chain.finally = (fn)->
@@ -217,11 +220,11 @@ applyChainBuilder = (chain, internal_fns)->
       # exe_ctx.error = null
       exe_ctx.resume()
     _catcher.accept_error = true
-    internal_fns.push _catcher
+    chain._internal_fns.push _catcher
     return chain
 
   chain.async = (name_at_group, fn)->
-    internal_fns.push (exe_ctx)->
+    chain._internal_fns.push (exe_ctx)->
       a_done = exe_ctx.createSynchronizePoint name_at_group
 
       fn.call exe_ctx, exe_ctx.curArr..., a_done
@@ -231,9 +234,9 @@ applyChainBuilder = (chain, internal_fns)->
   chain.await = (name_at_group, fn)->
     unless fn
       fn = name_at_group
-      name_at_group = internal_fns.length.toString()
+      name_at_group = chain._internal_fns.length.toString()
       # console.log 'anonymous_awiat', name_at_group, fn
-    internal_fns.push (exe_ctx)->
+    chain._internal_fns.push (exe_ctx)->
       a_done = exe_ctx.createSynchronizePoint name_at_group
       fn.call exe_ctx, exe_ctx.curArr..., a_done
       _ok = ()->
@@ -249,7 +252,7 @@ applyChainBuilder = (chain, internal_fns)->
 
   # chain.makePromise =
   chain.promise = (name_at_group, fn)->
-    internal_fns.push (exe_ctx)->
+    chain._internal_fns.push (exe_ctx)->
       promise = fn.call exe_ctx, exe_ctx.curArr...
       exe_ctx.trackingPromise name_at_group, promise
       exe_ctx.resume()
@@ -259,7 +262,7 @@ applyChainBuilder = (chain, internal_fns)->
     timeout = null
     if _.isNumber args[0]
       timeout = args.shift()
-    internal_fns.push (exe_ctx)->
+    chain._internal_fns.push (exe_ctx)->
       p = new Promise (resolve, reject)->
         task_promise = exe_ctx.getMergedPromise args...
         task_promise.then resolve, reject
@@ -275,26 +278,26 @@ applyChainBuilder = (chain, internal_fns)->
     return chain
 
   chain.feedback = (fn)->
-    internal_fns.push (exe_ctx)->
+    chain._internal_fns.push (exe_ctx)->
       fn.call exe_ctx, exe_ctx.feedback, exe_ctx.curArr...
       exe_ctx.resume()
     return chain
 
   chain.feedbackExeContext = ()->
-    internal_fns.push (exe_ctx)->
+    chain._internal_fns.push (exe_ctx)->
       exe_ctx.feedback.reset exe_ctx
       exe_ctx.resume()
     return chain
 
 
   chain.delay = (ms)->
-    internal_fns.push (exe_ctx)->
+    chain._internal_fns.push (exe_ctx)->
       _dfn = ()-> exe_ctx.resume()
       setTimeout _dfn, ms
     return chain
 
   chain.delayIf = (ms, if_fn)->
-    internal_fns.push (exe_ctx)->
+    chain._internal_fns.push (exe_ctx)->
       yn = if_fn.call exe_ctx, exe_ctx.curArr...
       if yn
         _dfn = ()-> exe_ctx.resume()
@@ -304,13 +307,12 @@ applyChainBuilder = (chain, internal_fns)->
     return chain
 
   chain.reduce = (fn)->
-    internal_fns.push (exe_ctx)->
+    chain._internal_fns.push (exe_ctx)->
       fn.call exe_ctx, exe_ctx.curArr..., exe_ctx
     return chain
 
 
 hyper_chain = ()->
-  internal_fns = []
   chain = (inputs...)-> #inputs..., _callback)->
 
     _callback = undefined
@@ -319,7 +321,7 @@ hyper_chain = ()->
       # inputs.push _callback
       # _callback = undefined
 
-    exe_ctx = createExecuteContext internal_fns, _callback
+    exe_ctx = createExecuteContext chain._internal_fns, _callback
     ASAP ()->
       # exe_ctx.resume()
       exe_ctx.inputs = inputs
@@ -331,7 +333,7 @@ hyper_chain = ()->
 
 
   chain.throwIn = (err)->
-    exe_ctx = createExecuteContext internal_fns
+    exe_ctx = createExecuteContext chain._internal_fns
     exe_ctx.curArr = []
     exe_ctx.error = err
     # debug 'throwIn', exe_ctx
@@ -339,11 +341,12 @@ hyper_chain = ()->
       exe_ctx.resume()
     return exe_ctx
 
-  chain.reactTo = (hook)->
-    hook.on chain
-    return chain
+  # chain.reactTo = (hook)->
+  #   hook.on chain
+  #   return chain
 
-  applyChainBuilder chain, internal_fns
+  applyChainBuilder chain
+  chain.clear()
   return chain
 
 #
