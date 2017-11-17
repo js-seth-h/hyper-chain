@@ -1,5 +1,5 @@
-hc = require '../src/chain'
-Boxlet = require '../src/Boxlet2' 
+hc = require '../src'
+Boxlet = hc.Boxlet 
 chai = require 'chai'
 expect = chai.expect
 debug = require('debug')('test')
