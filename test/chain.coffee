@@ -270,6 +270,24 @@ describe '비동기 .async, .wait .promise', ()->
       expect(execute_context.recall('test[]')).to.be.eql ['async_return']
       done()
 
+
+  it 'when .await throw Error, then skip functions', (done)->
+
+    chain = hc()
+      .map (cur)-> 0
+      .await 'test', (cur, a_done)->
+        _dfn = ()->
+          a_done new Error 'Just'
+        setTimeout _dfn, 50
+      .map (cur)->
+        done new Error 'Never Come Here'
+        {test} = @recall()
+        return test
+
+    chain null, (err, feedback, execute_context)->
+      expect(err).to.exist
+      done()
+
   it 'when anonymous .await, then use function index as name', (done)->
     chain = hc()
       .map (cur)-> 0
@@ -294,7 +312,8 @@ describe '비동기 .async, .wait .promise', ()->
         _dfn = ()->
           a_done new Error 'JUST'
         setTimeout _dfn, 50
-      .map (cur)-> 2
+      .map (cur)->
+        return 2
       .wait 'test'
       .map (cur)->
         {test} = @recall()
