@@ -34,6 +34,7 @@ describe 'chain is a function', ()->
         feedback.reset 'test', 1
 
     chain (err, f1, f2)->
+      console.log err if err
       expect(err).to.not.exist
       expect(f1).to.be.eql 'test'
       expect(f2).to.be.eql 1
@@ -151,7 +152,7 @@ describe 'chain can be stop by filter', ()->
 
     chain 2, (err, execute_context)->
       expect(err).to.not.exist
-      expect(execute_context.curArr[0]).to.be.equal 'passed'
+      expect(execute_context.curArgs.get(0)).to.be.equal 'passed'
       expect(execute_context.exit_status).to.be.equal 'finished'
       done()
 
@@ -181,7 +182,7 @@ describe 'error handling;', ()->
 
     chain 0, (err, execute_context)->
       expect(err).to.not.exist
-      expect(execute_context.curArr[0]).to.be.equal 1
+      expect(execute_context.curArgs.get(0)).to.be.equal 1
       # expect(execute_context.exit_status).to.be.equal 'filtered'
       done()
 
@@ -197,7 +198,7 @@ describe 'error handling;', ()->
 
     chain 0, (err, execute_context)->
       expect(err).to.exist
-      expect(execute_context.curArr[0]).to.be.equal 1
+      expect(execute_context.curArgs.get(0)).to.be.equal 1
       # expect(execute_context.exit_status).to.be.equal 'filtered'
       done()
   it 'when occur Error and occur different error in catch, then callback get diff Error ', (done)->
@@ -213,7 +214,7 @@ describe 'error handling;', ()->
     chain 0, (err, execute_context)->
       expect(err).to.exist
       expect(err.toString()).to.equal 'Error: Other Error'
-      expect(execute_context.curArr[0]).to.be.equal 1
+      expect(execute_context.curArgs.get(0)).to.be.equal 1
       # expect(execute_context.exit_status).to.be.equal 'filtered'
       done()
 
@@ -230,7 +231,7 @@ describe 'error handling;', ()->
     chain 0, (err, execute_context)->
       expect(err).to.exist
       expect(err.toString()).to.equal 'Error: Just'
-      expect(execute_context.curArr[0]).to.be.equal 1
+      expect(execute_context.curArgs.get(0)).to.be.equal 1
       # expect(execute_context.exit_status).to.be.equal 'filtered'
       done()
 
@@ -260,7 +261,7 @@ describe 'error handling;', ()->
 
     chain 0, (err, execute_context)->
       expect(err).to.not.exist
-      expect(execute_context.curArr[0]).to.be.equal 2
+      expect(execute_context.curArgs.get(0)).to.be.equal 2
       # expect(execute_context.exit_status).to.be.equal 'filtered'
       done()
 
@@ -299,7 +300,7 @@ describe '비동기 .async, .wait .promise', ()->
 
     chain null, (err, execute_context)->
       expect(err).to.not.exist
-      expect(execute_context.curArr[0]).to.be.eql 'async_return'
+      expect(execute_context.curArgs.get(0)).to.be.eql 'async_return'
       expect(execute_context.recall('test[]')).to.be.eql ['async_return']
       done()
 
@@ -318,7 +319,7 @@ describe '비동기 .async, .wait .promise', ()->
 
     chain null, (err, execute_context)->
       expect(err).to.not.exist
-      expect(execute_context.curArr[0]).to.be.eql 'async_return'
+      expect(execute_context.curArgs.get(0)).to.be.eql 'async_return'
       expect(execute_context.recall('test[]')).to.be.eql ['async_return']
       done()
 
@@ -355,7 +356,7 @@ describe '비동기 .async, .wait .promise', ()->
       expect(err).to.not.exist
       # console.log 'execute_context', execute_context
       # console.log 'execute_context.recall', execute_context.recall()
-      expect(execute_context.curArr[0]).to.be.eql 'async_return'
+      expect(execute_context.curArgs.get(0)).to.be.eql 'async_return'
       expect(execute_context.recall('2[]')).to.be.eql ['async_return']
       done()
 
@@ -396,7 +397,7 @@ describe '비동기 .async, .wait .promise', ()->
 
     chain null, (err, execute_context)->
       expect(err).to.not.exist
-      expect(execute_context.curArr[0]).to.be.eql 'resolve_return'
+      expect(execute_context.curArgs.get(0)).to.be.eql 'resolve_return'
       done()
 
 

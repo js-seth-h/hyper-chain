@@ -34,6 +34,7 @@ createExecuteContext = (internal_fns, _callback)->
 
   return exe_ctx =
     error: null
+    curArgs: new Args
     feedback: new Args
     step_inx: -1
     exit_status: undefined
@@ -50,8 +51,7 @@ createExecuteContext = (internal_fns, _callback)->
       # user defined group: []
 
     next: (args_obj)->
-      exe_ctx.curArr = args_obj.args
-      debug 'next args', exe_ctx.curArr, exe_ctx.cur, '<<', args_obj
+      exe_ctx.curArgs = args_obj
       exe_ctx.resume()
 
     resume: ()->
@@ -169,21 +169,21 @@ applyChainBuilder = (chain)->
     return chain
   chain.store = (var_name)->
     chain._internal_fns.push (exe_ctx)->
-      exe_ctx.remember var_name, exe_ctx.curArr...
-      exe_ctx.remember var_name + "[]", exe_ctx.curArr
+      exe_ctx.remember var_name, exe_ctx.curArgs.get 0
+      exe_ctx.remember var_name + "[]", exe_ctx.curArgs.args
       exe_ctx.next new Args()
     return chain
 
   chain.do = (fn)->
     chain._internal_fns.push (exe_ctx)->
-      fn.call exe_ctx, exe_ctx.curArr...
+      fn.call exe_ctx, exe_ctx.curArgs.args...
       exe_ctx.resume()
     return chain
 
   chain.map = (fn)->
     chain._internal_fns.push (exe_ctx)->
       # debug '.map', exe_ctx
-      new_cur = fn.call exe_ctx, exe_ctx.curArr...
+      new_cur = fn.call exe_ctx, exe_ctx.curArgs.args...
       unless new_cur instanceof Args
         new_cur = new Args new_cur
       exe_ctx.next new_cur
@@ -195,7 +195,7 @@ applyChainBuilder = (chain)->
 
   chain.filter = (fn)->
     chain._internal_fns.push (exe_ctx)->
-      can_continue = fn.call exe_ctx, exe_ctx.curArr...
+      can_continue = fn.call exe_ctx, exe_ctx.curArgs.args...
       if can_continue
         exe_ctx.resume()
       else
@@ -204,10 +204,10 @@ applyChainBuilder = (chain)->
 
   chain.catch = (fn)->
     _catcher = (exe_ctx)->
-      # console.log 'call .catch with', exe_ctx.error, exe_ctx.curArr
+
       unless exe_ctx.error
         return exe_ctx.resume()
-      fn.call exe_ctx, exe_ctx.error, exe_ctx.curArr...
+      fn.call exe_ctx, exe_ctx.error, exe_ctx.curArgs.args...
       exe_ctx.error = null
       exe_ctx.resume()
     _catcher.accept_error = true
@@ -216,7 +216,7 @@ applyChainBuilder = (chain)->
 
   chain.finally = (fn)->
     _catcher = (exe_ctx)->
-      fn.call exe_ctx, exe_ctx.error, exe_ctx.curArr...
+      fn.call exe_ctx, exe_ctx.error, exe_ctx.curArgs.args...
       # exe_ctx.error = null
       exe_ctx.resume()
     _catcher.accept_error = true
@@ -227,7 +227,7 @@ applyChainBuilder = (chain)->
     chain._internal_fns.push (exe_ctx)->
       a_done = exe_ctx.createSynchronizePoint name_at_group
 
-      fn.call exe_ctx, exe_ctx.curArr..., a_done
+      fn.call exe_ctx, exe_ctx.curArgs.args..., a_done
       exe_ctx.resume()
     return chain
 
@@ -238,7 +238,7 @@ applyChainBuilder = (chain)->
       # console.log 'anonymous_awiat', name_at_group, fn
     chain._internal_fns.push (exe_ctx)->
       a_done = exe_ctx.createSynchronizePoint name_at_group
-      fn.call exe_ctx, exe_ctx.curArr..., a_done
+      fn.call exe_ctx, exe_ctx.curArgs.args..., a_done
       _ok = ()->
         exe_ctx.resume()
       _fail = (err)->
@@ -253,7 +253,7 @@ applyChainBuilder = (chain)->
   # chain.makePromise =
   chain.promise = (name_at_group, fn)->
     chain._internal_fns.push (exe_ctx)->
-      promise = fn.call exe_ctx, exe_ctx.curArr...
+      promise = fn.call exe_ctx, exe_ctx.curArgs.args...
       exe_ctx.trackingPromise name_at_group, promise
       exe_ctx.resume()
     return chain
@@ -279,7 +279,7 @@ applyChainBuilder = (chain)->
 
   chain.feedback = (fn)->
     chain._internal_fns.push (exe_ctx)->
-      fn.call exe_ctx, exe_ctx.feedback, exe_ctx.curArr...
+      fn.call exe_ctx, exe_ctx.feedback, exe_ctx.curArgs.args...
       exe_ctx.resume()
     return chain
 
@@ -298,7 +298,7 @@ applyChainBuilder = (chain)->
 
   chain.delayIf = (ms, if_fn)->
     chain._internal_fns.push (exe_ctx)->
-      yn = if_fn.call exe_ctx, exe_ctx.curArr...
+      yn = if_fn.call exe_ctx, exe_ctx.curArgs.args...
       if yn
         _dfn = ()-> exe_ctx.resume()
         setTimeout _dfn, ms
@@ -308,7 +308,7 @@ applyChainBuilder = (chain)->
 
   chain.reduce = (fn)->
     chain._internal_fns.push (exe_ctx)->
-      fn.call exe_ctx, exe_ctx.curArr..., exe_ctx
+      fn.call exe_ctx, exe_ctx.curArgs.args..., exe_ctx
     return chain
 
 
@@ -334,7 +334,7 @@ hyper_chain = ()->
 
   chain.throwIn = (err)->
     exe_ctx = createExecuteContext chain._internal_fns
-    exe_ctx.curArr = []
+
     exe_ctx.error = err
     # debug 'throwIn', exe_ctx
     ASAP ()->
