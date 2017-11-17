@@ -1,6 +1,5 @@
 hc = require '../src/chain'
-Boxlet = require '../src/Boxlet2'
-hook = require '../src/hook'
+Boxlet = require '../src/Boxlet2' 
 chai = require 'chai'
 expect = chai.expect
 debug = require('debug')('test')
@@ -30,7 +29,7 @@ describe 'Boxlet.serial', ()->
   it 'when start and callbacked, then feedbacks fullfill', (done)->
 
     box = new Boxlet()
-      .puts [0...10] 
+      .puts [0...10]
       .serial()
 
     last = -1
