@@ -9,6 +9,17 @@ ASAP = (fn)-> process.nextTick fn
 #   return value if Array.isArray(value)
 #   return [ value ]
 
+class Args
+  constructor : (@args...)->
+  reset: (@args...)->
+  set: (inx, val)->
+    @args[inx] = val
+  get:(inx)->
+    @args[inx]
+  length: ()->
+    @args.length
+
+Args.Empty = new Args()
 createExecuteContext = (internal_fns, _callback)->
   _KV_ = {}
 
@@ -19,11 +30,11 @@ createExecuteContext = (internal_fns, _callback)->
       return unless _callback
       [cb, _callback] = [_callback, null]
       debug 'outcallback', exe_ctx.error, exe_ctx.feedback, exe_ctx
-      cb exe_ctx.error, exe_ctx.feedback, exe_ctx
+      cb exe_ctx.error, exe_ctx.feedback.args...
 
   return exe_ctx =
     error: null
-    feedback: {} # callback으로 돌아가는 값
+    feedback: new Args
     step_inx: -1
     exit_status: undefined
       # undefined: 실행중
@@ -75,7 +86,13 @@ createExecuteContext = (internal_fns, _callback)->
     evac: (args...)->
       # 배열반환은 필요없다. HC()는 함수 취급임으로 항상 단일 값 반환
       # args 길이를 확인하기 위해서 처리.
-      exe_ctx.feedback = args[0] if args.length > 0
+
+      if args.length > 0 
+        if args[0] instanceof Args
+          exe_ctx.feedback = args[0]
+        else
+          exe_ctx.feedback.reset args...
+      # exe_ctx.feedback = args[0] if args.length > 0
       exe_ctx._exit 'finished'
 
     _exit: (exit_status)->
@@ -259,9 +276,16 @@ applyChainBuilder = (chain, internal_fns)->
 
   chain.feedback = (fn)->
     internal_fns.push (exe_ctx)->
-      fn.call exe_ctx, exe_ctx.curArr..., exe_ctx.feedback, exe_ctx
+      fn.call exe_ctx, exe_ctx.feedback, exe_ctx.curArr...
       exe_ctx.resume()
     return chain
+
+  chain.feedbackExeContext = ()->
+    internal_fns.push (exe_ctx)->
+      exe_ctx.feedback.reset exe_ctx
+      exe_ctx.resume()
+    return chain
+
 
   chain.delay = (ms)->
     internal_fns.push (exe_ctx)->
@@ -357,9 +381,5 @@ hyper_chain.reducer = (opt)->
   reducer_self.acc = []
   return reducer_self
 
-
-hyper_chain.Args = class Args
-  constructor : (@args...)->
-
-Args.Empty = new Args()
+hyper_chain.Args = Args
 module.exports = exports = hyper_chain

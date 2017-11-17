@@ -28,16 +28,28 @@ describe 'chain is a function', ()->
     chain = hc()
     expect(chain).a 'function'
 
-  it 'when call chain, then get feedback and execute_context', (done)->
+  it 'when call chain, then return feedback', (done)->
     chain = hc()
-    chain null, (err, feedback, execute_context)->
+      .feedback (feedback, cur...)->
+        feedback.reset 'test', 1
 
+    chain (err, f1, f2)->
       expect(err).to.not.exist
-      expect(feedback).to.be.eql {}
+      expect(f1).to.be.eql 'test'
+      expect(f2).to.be.eql 1
+      # expect(execute_context).a 'object'
+      # expect(execute_context.exit_status).to.be.equal 'finished'
+      done()
+
+  it 'can feedaback execute_context', (done)->
+    chain = hc()
+      .feedbackExeContext()
+
+    chain (err,execute_context)->
+      expect(err).to.not.exist
       expect(execute_context).a 'object'
       expect(execute_context.exit_status).to.be.equal 'finished'
       done()
-
 
 describe 'change data in process', ()->
   it 'when add .do, then not change current data', (done)->
@@ -117,13 +129,14 @@ describe 'change data in process', ()->
 describe 'chain can be stop by filter', ()->
   it 'when .filter - return true, then not stop', (done)->
     chain = hc()
+      .feedbackExeContext()
       .filter (cur)-> true
       .map (cur)->
         return "passed"
       # .do (cur)->
       #   throw new Error 'Should be Filtered'
 
-    chain 2, (err, feedback, execute_context)->
+    chain 2, (err, execute_context)->
       expect(err).to.not.exist
       expect(execute_context.curArr[0]).to.be.equal 'passed'
       expect(execute_context.exit_status).to.be.equal 'finished'
@@ -132,26 +145,28 @@ describe 'chain can be stop by filter', ()->
 
   it 'when .filter - return false, then stop', (done)->
     chain = hc()
+      .feedbackExeContext()
       .filter (cur)-> false
       .do (cur)->
         throw new Error 'Should be Filtered'
 
-    chain 2, (err, feedback, execute_context)->
+    chain 2, (err, execute_context)->
       expect(err).to.not.exist
       expect(execute_context.exit_status).to.be.equal 'filtered'
       done()
 
-describe 'error handling', ()->
+describe 'error handling;', ()->
 
   it 'when occur Error, then jump to .catch & error vanished ', (done)->
     chain = hc()
+      .feedbackExeContext()
       .map (cur)-> 1
       .do (cur)-> throw new Error 'Just'
       .map (cur)-> 2
       .map (cur)-> 3
       .catch (err, cur)->
 
-    chain 0, (err, feedback, execute_context)->
+    chain 0, (err, execute_context)->
       expect(err).to.not.exist
       expect(execute_context.curArr[0]).to.be.equal 1
       # expect(execute_context.exit_status).to.be.equal 'filtered'
@@ -159,6 +174,7 @@ describe 'error handling', ()->
 
   it 'when occur Error and occur again in catch, then callback get Error ', (done)->
     chain = hc()
+      .feedbackExeContext()
       .map (cur)-> 1
       .do (cur)-> throw new Error 'Just'
       .map (cur)-> 2
@@ -166,13 +182,14 @@ describe 'error handling', ()->
       .catch (err, cur)->
         throw err
 
-    chain 0, (err, feedback, execute_context)->
+    chain 0, (err, execute_context)->
       expect(err).to.exist
       expect(execute_context.curArr[0]).to.be.equal 1
       # expect(execute_context.exit_status).to.be.equal 'filtered'
       done()
   it 'when occur Error and occur different error in catch, then callback get diff Error ', (done)->
     chain = hc()
+      .feedbackExeContext()
       .map (cur)-> 1
       .do (cur)-> throw new Error 'Just'
       .map (cur)-> 2
@@ -180,7 +197,7 @@ describe 'error handling', ()->
       .catch (err, cur)->
         throw new Error 'Other Error'
 
-    chain 0, (err, feedback, execute_context)->
+    chain 0, (err, execute_context)->
       expect(err).to.exist
       expect(err.toString()).to.equal 'Error: Other Error'
       expect(execute_context.curArr[0]).to.be.equal 1
@@ -189,6 +206,7 @@ describe 'error handling', ()->
 
   it 'when .finally , then error still flow', (done)->
     chain = hc()
+      .feedbackExeContext()
       .map (cur)-> 1
       .do (cur)-> throw new Error 'Just'
       .map (cur)-> 2
@@ -196,7 +214,7 @@ describe 'error handling', ()->
       .finally (err, cur)-> 4
       .map (cur)-> 5
 
-    chain 0, (err, feedback, execute_context)->
+    chain 0, (err, execute_context)->
       expect(err).to.exist
       expect(err.toString()).to.equal 'Error: Just'
       expect(execute_context.curArr[0]).to.be.equal 1
@@ -210,6 +228,7 @@ describe 'error handling', ()->
       but chai did not show correct response.
       it is uncaughtException, but chai.js consider it as Test Fail.
     ###
+
     process.on 'uncaughtException', (err)->
       expect(err).to.exist
       done()
@@ -219,13 +238,14 @@ describe 'error handling', ()->
 
   it 'without  Error, then skip .catch ', (done)->
     chain = hc()
+      .feedbackExeContext()
       .map (cur)-> 1
       # .do (cur)-> throw new Error 'Just'
       .catch (err, cur)->
         done new Error "Never Come Here"
       .map (cur)-> 2
 
-    chain 0, (err, feedback, execute_context)->
+    chain 0, (err, execute_context)->
       expect(err).to.not.exist
       expect(execute_context.curArr[0]).to.be.equal 2
       # expect(execute_context.exit_status).to.be.equal 'filtered'
@@ -252,6 +272,7 @@ describe '비동기 .async, .wait .promise', ()->
   it 'when .async & .wait, then read value from stroage', (done)->
 
     chain = hc()
+      .feedbackExeContext()
       .map (cur)-> 0
       .async 'test', (cur, a_done)->
         _dfn = ()->
@@ -263,7 +284,7 @@ describe '비동기 .async, .wait .promise', ()->
         {test} = @recall()
         return test
 
-    chain null, (err, feedback, execute_context)->
+    chain null, (err, execute_context)->
       expect(err).to.not.exist
       expect(execute_context.curArr[0]).to.be.eql 'async_return'
       expect(execute_context.recall('test[]')).to.be.eql ['async_return']
@@ -272,6 +293,7 @@ describe '비동기 .async, .wait .promise', ()->
   it 'when .await, then read value from stroage', (done)->
 
     chain = hc()
+      .feedbackExeContext()
       .map (cur)-> 0
       .await 'test', (cur, a_done)->
         _dfn = ()->
@@ -281,7 +303,7 @@ describe '비동기 .async, .wait .promise', ()->
         {test} = @recall()
         return test
 
-    chain null, (err, feedback, execute_context)->
+    chain null, (err, execute_context)->
       expect(err).to.not.exist
       expect(execute_context.curArr[0]).to.be.eql 'async_return'
       expect(execute_context.recall('test[]')).to.be.eql ['async_return']
@@ -301,24 +323,27 @@ describe '비동기 .async, .wait .promise', ()->
         {test} = @recall()
         return test
 
-    chain null, (err, feedback, execute_context)->
+    chain null, (err)->
       expect(err).to.exist
       done()
 
   it 'when anonymous .await, then use function index as name', (done)->
     chain = hc()
+      .feedbackExeContext()
       .map (cur)-> 0
       .await (cur, a_done)->
         _dfn = ()->
           a_done null, 'async_return'
         setTimeout _dfn, 50
       .map (cur)->
-        return @recall()["1"]
+        return @recall()["2"]
 
-    chain null, (err, feedback, execute_context)->
+    chain null, (err, execute_context)->
       expect(err).to.not.exist
+      # console.log 'execute_context', execute_context
+      # console.log 'execute_context.recall', execute_context.recall()
       expect(execute_context.curArr[0]).to.be.eql 'async_return'
-      expect(execute_context.recall('1[]')).to.be.eql ['async_return']
+      expect(execute_context.recall('2[]')).to.be.eql ['async_return']
       done()
 
   it 'when .async & .wait but occur Error, then callback get error', (done)->
@@ -336,13 +361,14 @@ describe '비동기 .async, .wait .promise', ()->
         {test} = @recall()
         return test
 
-    chain null, (err, feedback, execute_context)->
+    chain null, (err)->
       expect(err).to.exist
       done()
 
   it 'when .async & .promise, then read value from stroage', (done)->
 
     chain = hc()
+      .feedbackExeContext()
       .map (cur)-> 0
       .promise 'test', (cur)->
         new Promise (resolve, reject)->
@@ -355,7 +381,7 @@ describe '비동기 .async, .wait .promise', ()->
         {test} = @recall()
         return test
 
-    chain null, (err, feedback, execute_context)->
+    chain null, (err, execute_context)->
       expect(err).to.not.exist
       expect(execute_context.curArr[0]).to.be.eql 'resolve_return'
       done()
@@ -384,13 +410,18 @@ describe '반환 제어 .feedback', ()->
 
   it 'when .feedback & set data. then callback get data', (done)->
     chain = hc()
-      .do (cur)-> cur + 1
-      .feedback (cur, feedback, execute_context)->
-        feedback.send_back_str = 'to callback'
+      .map (cur)->
+        new hc.Args cur + 1, cur + 2
+      .feedback (feedback, cur...)->
+        feedback.reset cur...
+      .feedback (feedback)->
+        feedback.set 2, "to callback"
 
-    chain null, (err, feedback, execute_context)->
+    chain 10, (err, f1, f2, f3 )->
       expect(err).to.not.exist
-      expect(feedback.send_back_str).to.be.eql 'to callback'
+      expect(f1).to.be.eql 11
+      expect(f2).to.be.eql 12
+      expect(f3).to.be.eql 'to callback'
       done()
 
 time_accuracy = 5
@@ -474,10 +505,9 @@ describe '.evac ', ()->
       done()
 
   it 'without arg, feedback maintained', (done)->
-
     fn = hc()
-      .feedback (feedback, exe_ctx)->
-        exe_ctx.feedback =  "legacy feed-back"
+      .feedback (feedback)->
+        feedback.reset "legacy feed-back"
       .do ()->
         @evac()
       .do ()->
@@ -536,6 +566,7 @@ describe '처리 합병 .reduce', ()->
 
   it 'when .reduce in 50 ms & call 2 time and needFlush. then call1 getReducde. call2 go, but no delay', (done)->
     chain = hc()
+      .feedbackExeContext()
       .reduce hc.reducer
         time_slice: 50
         reduce: (acc)-> return acc
@@ -543,13 +574,13 @@ describe '처리 합병 .reduce', ()->
       .do (cur)->
         expect(cur).to.be.eql ['reduce1', 'reduce2' ]
 
-    chain 'reduce1', (err, feedback, execute_context)->
-      debug 'reduce1', err, feedback, execute_context
+    chain 'reduce1', (err, execute_context)->
+      debug 'reduce1', err, execute_context
       expect(err).to.not.exist
       expect(execute_context.exit_status).to.be.eql 'reduced'
 
     t_start = (new Date).getTime()
-    chain 'reduce2', (err, feedback, execute_context)->
+    chain 'reduce2', (err, execute_context)->
       expect(err).to.not.exist
       t_end = (new Date).getTime()
       t_gap = t_end - t_start
@@ -558,6 +589,7 @@ describe '처리 합병 .reduce', ()->
 
   it 'when .reduce in 50 ms & call 2 time and not needFlush. then call1 getReducde. call2 go, with delay', (done)->
     chain = hc()
+      .feedbackExeContext()
       .reduce hc.reducer
         time_slice: 50
         reduce: (acc)-> return acc
@@ -565,13 +597,13 @@ describe '처리 합병 .reduce', ()->
       .do (cur)->
         expect(cur).to.be.eql ['reduce1', 'reduce2' ]
 
-    chain 'reduce1', (err, feedback, execute_context)->
-      debug 'reduce1', err, feedback, execute_context
+    chain 'reduce1', (err, execute_context)->
+      debug 'reduce1', err, execute_context
       expect(err).to.not.exist
       expect(execute_context.exit_status).to.be.eql 'reduced'
 
     t_start = (new Date).getTime()
-    chain 'reduce2', (err, feedback, execute_context)->
+    chain 'reduce2', (err, execute_context)->
       expect(err).to.not.exist
       t_end = (new Date).getTime()
       t_gap = t_end - t_start
@@ -580,6 +612,7 @@ describe '처리 합병 .reduce', ()->
 
   it 'when .reduce function return new cur value. then next fn receive that data ', (done)->
     chain = hc()
+      .feedbackExeContext()
       .reduce hc.reducer
         time_slice: 50
         reduce: (acc)-> return acc.join '-'
@@ -587,33 +620,35 @@ describe '처리 합병 .reduce', ()->
       .do (cur)->
         expect(cur).to.be.eql 'reduce1-reduce2'
 
-    chain 'reduce1', (err, feedback, execute_context)->
+    chain 'reduce1', (err, execute_context)->
       expect(err).to.not.exist
       expect(execute_context.exit_status).to.be.eql 'reduced'
 
-    chain 'reduce2', (err, feedback, execute_context)->
+    chain 'reduce2', (err, execute_context)->
       expect(err).to.not.exist
       expect(execute_context.exit_status).to.be.eql 'finished'
       done()
 
   it 'when .reduce is not working actually. then each call finised ', (done)->
     chain = hc()
+      .feedbackExeContext()
       .reduce hc.reducer
         time_slice: 50
         reduce: (acc)-> acc
         needFlush: (acc)-> true
       .do (cur)-> cur + 1
 
-    chain 'reduce1', (err, feedback, execute_context)->
+    chain 'reduce1', (err, execute_context)->
       expect(err).to.not.exist
       expect(execute_context.exit_status).to.be.eql 'finished'
 
-    chain 'reduce2', (err, feedback, execute_context)->
+    chain 'reduce2', (err, execute_context)->
       expect(err).to.not.exist
       expect(execute_context.exit_status).to.be.eql 'finished'
       done()
   it 'when .reduce hasnot time_slice. then needFlush decide all ', (done)->
     chain = hc()
+      .feedbackExeContext()
       .reduce hc.reducer
         time_slice: false
         reduce: (acc)-> acc
@@ -622,19 +657,19 @@ describe '처리 합병 .reduce', ()->
           acc.length >= 4
       # .do (cur)-> cur + 1
 
-    chain 'reduce1', (err, feedback, execute_context)->
+    chain 'reduce1', (err, execute_context)->
       expect(err).to.not.exist
       expect(execute_context.exit_status).to.be.eql 'reduced'
 
-    chain 'reduce2', (err, feedback, execute_context)->
+    chain 'reduce2', (err, execute_context)->
       expect(err).to.not.exist
       expect(execute_context.exit_status).to.be.eql 'reduced'
 
-    chain 'reduce3', (err, feedback, execute_context)->
+    chain 'reduce3', (err, execute_context)->
       expect(err).to.not.exist
       expect(execute_context.exit_status).to.be.eql 'reduced'
 
-    chain 'reduce4', (err, feedback, execute_context)->
+    chain 'reduce4', (err, execute_context)->
       expect(err).to.not.exist
       expect(execute_context.exit_status).to.be.eql 'finished'
       done()
