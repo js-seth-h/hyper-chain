@@ -140,7 +140,19 @@ createExecuteContext = (internal_fns, _callback)->
 
 
 
-applyChainExtender = (chain, internal_fns)->
+applyChainBuilder = (chain, internal_fns)->
+
+  chain.load = (var_name)->
+    internal_fns.push (exe_ctx)->
+      val = exe_ctx.recall var_name
+      exe_ctx.next new Args val
+    return chain
+  chain.store = (var_name)->
+    internal_fns.push (exe_ctx)->
+      exe_ctx.remember var_name, exe_ctx.curArr...
+      exe_ctx.remember var_name + "[]", exe_ctx.curArr
+      exe_ctx.next new Args()
+    return chain
 
   chain.do = (fn)->
     internal_fns.push (exe_ctx)->
@@ -307,7 +319,7 @@ hyper_chain = ()->
     hook.on chain
     return chain
 
-  applyChainExtender chain, internal_fns
+  applyChainBuilder chain, internal_fns
   return chain
 
 

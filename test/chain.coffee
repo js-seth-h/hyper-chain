@@ -231,6 +231,23 @@ describe 'error handling', ()->
       # expect(execute_context.exit_status).to.be.equal 'filtered'
       done()
 
+describe 'when call .load .store;', ()->
+
+  it 'basic var control possible', (done)->
+
+    do hc()
+      .map ()-> 'test'
+      .store 'var'
+      .do (args...)->
+        expect(args).have.lengthOf 0
+      .load 'var'
+      .do (var_val)->
+        expect(var_val).be.eql 'test'
+      .load()
+      .do (obj)->
+        expect(obj).be.eql {var: 'test', 'var[]': ['test']}
+      .finally done
+
 describe '비동기 .async, .wait .promise', ()->
   it 'when .async & .wait, then read value from stroage', (done)->
 
