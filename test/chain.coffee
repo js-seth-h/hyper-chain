@@ -531,6 +531,46 @@ describe '.evac ', ()->
       expect(err).not.exist
       expect(feedback).to.eql 'legacy feed-back'
       done()
+
+describe 'invokes', ()->
+  EventEmitter  = require 'events'
+  it 'with invokeByEvent. then Emitter has listner', ()->
+    emiter = new EventEmitter
+    chain = hc()
+      .invokeByEvent emiter, 'fire'
+
+    expect(emiter.listenerCount 'fire').to.be.eql 1
+
+
+  it 'with invokeByPromise. then chain get args of event', (done)->
+
+    _resolve = null
+    p = new Promise (resolve, reject)->
+      _resolve = resolve
+    chain = hc()
+      .invokeByPromise p
+      .do (cur)->
+        expect(cur).to.eql 5
+        done()
+    _resolve 5
+
+  it 'when hook.promise & reject. then chain not called', (done)->
+
+    _reject = null
+    p = new Promise (resolve, reject)->
+      _reject = reject
+    chain = hc()
+      .invokeByPromise p
+      .catch (err, cur)->
+        # console.log 'err, cur', err, cur
+        expect(err).to.be.exist
+        done()
+
+    _reject new Error 'JUST'
+
+
+
+
 describe 'complex usage', ()->
   it 'run without args & callback, await take only callback function', (it_done)->
     do hc()
@@ -542,150 +582,3 @@ describe 'complex usage', ()->
         done()
       .do ()->
         it_done()
-
-###describe '처리 합병 .reduce', ()->
-
-  it 'when .reduce in 50 ms & call 1 time & not needFlush. then delayed and go', (done)->
-    chain = hc()
-      .reduce hc.reducer
-        time_slice: 50 # 최대 50ms마다 방출
-        reduce: (acc)-> return acc
-        needFlush: (acc)-> return false
-      .do (cur)->
-        expect(cur).to.be.eql ['reduce']
-
-    t_start = (new Date).getTime()
-    chain 'reduce', (err, feedback, execute_context)->
-      expect(err).to.not.exist
-      t_end = (new Date).getTime()
-      t_gap = t_end - t_start
-      expect(t_gap).be.least 50 - time_accuracy
-      done()
-  it 'when .reduce in 50 ms & call 1 time needFlush. then go, but no delay', (done)->
-    chain = hc()
-      .reduce hc.reducer
-        time_slice: 50
-        reduce: (acc)-> return acc
-        needFlush: (acc)-> return true
-      .do (cur)->
-        expect(cur).to.be.eql ['reduce']
-
-    t_start = (new Date).getTime()
-    chain 'reduce', (err, feedback, execute_context)->
-      expect(err).to.not.exist
-      t_end = (new Date).getTime()
-      t_gap = t_end - t_start
-      expect(t_gap).be.below 50 - time_accuracy
-      done()
-
-
-  it 'when .reduce in 50 ms & call 2 time and needFlush. then call1 getReducde. call2 go, but no delay', (done)->
-    chain = hc()
-      .feedbackExeContext()
-      .reduce hc.reducer
-        time_slice: 50
-        reduce: (acc)-> return acc
-        needFlush: (acc)-> acc.length >= 2
-      .do (cur)->
-        expect(cur).to.be.eql ['reduce1', 'reduce2' ]
-
-    chain 'reduce1', (err, execute_context)->
-      debug 'reduce1', err, execute_context
-      expect(err).to.not.exist
-      expect(execute_context.exit_status).to.be.eql 'reduced'
-
-    t_start = (new Date).getTime()
-    chain 'reduce2', (err, execute_context)->
-      expect(err).to.not.exist
-      t_end = (new Date).getTime()
-      t_gap = t_end - t_start
-      expect(t_gap).be.below 50 - time_accuracy
-      done()
-
-  it 'when .reduce in 50 ms & call 2 time and not needFlush. then call1 getReducde. call2 go, with delay', (done)->
-    chain = hc()
-      .feedbackExeContext()
-      .reduce hc.reducer
-        time_slice: 50
-        reduce: (acc)-> return acc
-        needFlush: (acc)-> false
-      .do (cur)->
-        expect(cur).to.be.eql ['reduce1', 'reduce2' ]
-
-    chain 'reduce1', (err, execute_context)->
-      debug 'reduce1', err, execute_context
-      expect(err).to.not.exist
-      expect(execute_context.exit_status).to.be.eql 'reduced'
-
-    t_start = (new Date).getTime()
-    chain 'reduce2', (err, execute_context)->
-      expect(err).to.not.exist
-      t_end = (new Date).getTime()
-      t_gap = t_end - t_start
-      expect(t_gap).be.least 50 - time_accuracy
-      done()
-
-  it 'when .reduce function return new cur value. then next fn receive that data ', (done)->
-    chain = hc()
-      .feedbackExeContext()
-      .reduce hc.reducer
-        time_slice: 50
-        reduce: (acc)-> return acc.join '-'
-        needFlush: (acc)-> acc.length >= 2
-      .do (cur)->
-        expect(cur).to.be.eql 'reduce1-reduce2'
-
-    chain 'reduce1', (err, execute_context)->
-      expect(err).to.not.exist
-      expect(execute_context.exit_status).to.be.eql 'reduced'
-
-    chain 'reduce2', (err, execute_context)->
-      expect(err).to.not.exist
-      expect(execute_context.exit_status).to.be.eql 'finished'
-      done()
-
-  it 'when .reduce is not working actually. then each call finised ', (done)->
-    chain = hc()
-      .feedbackExeContext()
-      .reduce hc.reducer
-        time_slice: 50
-        reduce: (acc)-> acc
-        needFlush: (acc)-> true
-      .do (cur)-> cur + 1
-
-    chain 'reduce1', (err, execute_context)->
-      expect(err).to.not.exist
-      expect(execute_context.exit_status).to.be.eql 'finished'
-
-    chain 'reduce2', (err, execute_context)->
-      expect(err).to.not.exist
-      expect(execute_context.exit_status).to.be.eql 'finished'
-      done()
-  it 'when .reduce hasnot time_slice. then needFlush decide all ', (done)->
-    chain = hc()
-      .feedbackExeContext()
-      .reduce hc.reducer
-        time_slice: false
-        reduce: (acc)-> acc
-        needFlush: (acc)->
-          debug 'acc', acc
-          acc.length >= 4
-      # .do (cur)-> cur + 1
-
-    chain 'reduce1', (err, execute_context)->
-      expect(err).to.not.exist
-      expect(execute_context.exit_status).to.be.eql 'reduced'
-
-    chain 'reduce2', (err, execute_context)->
-      expect(err).to.not.exist
-      expect(execute_context.exit_status).to.be.eql 'reduced'
-
-    chain 'reduce3', (err, execute_context)->
-      expect(err).to.not.exist
-      expect(execute_context.exit_status).to.be.eql 'reduced'
-
-    chain 'reduce4', (err, execute_context)->
-      expect(err).to.not.exist
-      expect(execute_context.exit_status).to.be.eql 'finished'
-      done()
-###

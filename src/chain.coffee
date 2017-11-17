@@ -311,10 +311,8 @@ applyChainBuilder = (chain)->
       fn.call exe_ctx, exe_ctx.curArgs.args..., exe_ctx
     return chain
 
-
-hyper_chain = ()->
-  chain = (inputs...)-> #inputs..., _callback)->
-
+applyInvokeFn = (chain)->
+  chain.invoke = (inputs...)->
     _callback = undefined
     if _.isFunction _.last inputs
       _callback = inputs.pop()
@@ -328,10 +326,6 @@ hyper_chain = ()->
       exe_ctx.next new Args inputs...
     return exe_ctx
 
-  chain.invoke = (inputs..., _cb)->
-    return chain inputs..., _cb
-
-
   chain.throwIn = (err)->
     exe_ctx = createExecuteContext chain._internal_fns
 
@@ -341,10 +335,22 @@ hyper_chain = ()->
       exe_ctx.resume()
     return exe_ctx
 
-  # chain.reactTo = (hook)->
-  #   hook.on chain
-  #   return chain
+  chain.invokeByEvent = (src_obj, event_name)->
+    src_obj.on event_name, (args...)->
+      chain.invoke args...
+    return chain
+  chain.invokeByPromise = (promise)->
+    _ok = (value)-> chain.invoke value
+    _fail = (err)->
+      chain.throwIn err
+    promise.then _ok, _fail
+    return chain
 
+hyper_chain = ()->
+  chain = (inputs...)->
+    chain.invoke inputs...
+
+  applyInvokeFn chain
   applyChainBuilder chain
   chain.clear()
   return chain
