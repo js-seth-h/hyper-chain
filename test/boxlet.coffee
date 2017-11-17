@@ -11,15 +11,16 @@ scenario = it
 describe 'Boxlet.parallel', ()->
   it 'when start and callbacked, then feedbacks fullfill', (done)->
 
-    d = Boxlet.parallel()
-    d.puts [0...10]
-    chain = hc()
-      .reactTo hook.of d
+    box = new Boxlet()
+      .puts [0...10]
+      .parallel()
+
+    box.handler
       .map (cur)-> cur * cur
       .feedback (feedback, cur)->
         feedback.set 0, cur
 
-    d.start (err, Boxlet)->
+    box.pullOut (err, Boxlet)->
       expect(Boxlet.feedbacks).be.eql [0...10].map (x)-> x * x
       done()
 
@@ -28,11 +29,12 @@ describe 'Boxlet.parallel', ()->
 describe 'Boxlet.serial', ()->
   it 'when start and callbacked, then feedbacks fullfill', (done)->
 
-    d = Boxlet.serial()
-    d.puts [0...10]
+    box = new Boxlet()
+      .puts [0...10]
+      .serial()
+
     last = -1
-    chain = hc()
-      .reactTo hook.of d
+    box.handler
       .do (cur)->
         expect(last + 1).be.eql cur
         last = cur
@@ -40,7 +42,7 @@ describe 'Boxlet.serial', ()->
       .feedback (feedback, cur)->
         feedback.set 0, cur
 
-    d.start (err, Boxlet)->
+    box.pullOut (err, Boxlet)->
       expect(Boxlet.feedbacks).be.eql [0...10].map (x)-> x * x
       done()
 
@@ -48,22 +50,25 @@ describe 'Boxlet.serial', ()->
 
 describe 'Boxlet.nParallel', ()->
  it 'when start and callbacked, then feedbacks fullfill ', (done)->
-  d = Boxlet.nParallel 5
-  d.puts [0...10]
-  chain = hc()
-    .reactTo hook.of d
+
+  box = new Boxlet()
+    .puts [0...10]
+    .parallel()
+  box.handler
     .map (cur)-> cur * cur
     .feedback (feedback, cur)->
       feedback.set 0, cur
-  d.start (err, Boxlet)->
+  box.pullOut (err, Boxlet)->
     expect(Boxlet.feedbacks).be.eql [0...10].map (x)-> x * x
     done()
 
  it 'when start and callbacked, then feedbacks fullfill & concurrent limited ', (done)->
-  d = Boxlet.nParallel 2
-  d.puts [0...10]
-  chain = hc()
-    .reactTo hook.of d
+
+  box = new Boxlet()
+    .puts [0...10]
+    .nParallel 2
+
+  box.handler
     .map (cur)-> cur * cur
     .async 'test', (cur, a_done)->
       _dfn = ()->
@@ -74,7 +79,7 @@ describe 'Boxlet.nParallel', ()->
 
   t_start = (new Date).getTime()
   time_accuracy = 5
-  d.start (err, Boxlet)->
+  box.pullOut (err, Boxlet)->
     t_end = (new Date).getTime()
     t_gap = t_end - t_start
     expect(t_gap).be.least 5 * 10 / 2 - time_accuracy

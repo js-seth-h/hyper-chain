@@ -528,7 +528,8 @@ describe 'complex usage', ()->
         done()
       .do ()->
         it_done()
-describe '처리 합병 .reduce', ()->
+
+###describe '처리 합병 .reduce', ()->
 
   it 'when .reduce in 50 ms & call 1 time & not needFlush. then delayed and go', (done)->
     chain = hc()
@@ -673,3 +674,4 @@ describe '처리 합병 .reduce', ()->
       expect(err).to.not.exist
       expect(execute_context.exit_status).to.be.eql 'finished'
       done()
+###

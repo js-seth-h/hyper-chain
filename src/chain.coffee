@@ -87,7 +87,7 @@ createExecuteContext = (internal_fns, _callback)->
       # 배열반환은 필요없다. HC()는 함수 취급임으로 항상 단일 값 반환
       # args 길이를 확인하기 위해서 처리.
 
-      if args.length > 0 
+      if args.length > 0
         if args[0] instanceof Args
           exe_ctx.feedback = args[0]
         else
@@ -346,40 +346,40 @@ hyper_chain = ()->
   applyChainBuilder chain, internal_fns
   return chain
 
-
-hyper_chain.reducer = (opt)->
-  reducer_self = (cur, execute_context)->
-    reducer_self.reducedPending()
-
-    reducer_self.pending_context = execute_context
-    reducer_self.acc.push cur
-    if opt.needFlush reducer_self.acc
-      reducer_self.continuePending()
-    else if opt.time_slice and not reducer_self.tid
-      reducer_self.tid = setTimeout reducer_self.continuePending, opt.time_slice
-
-  reducer_self.reducedPending = ()->
-    return unless reducer_self.pending_context
-    reducer_self.pending_context._exit 'reduced'
-    reducer_self.pending_context = null
-
-  reducer_self.continuePending = ()->
-    throw new Error 'pending context not exist' unless reducer_self.pending_context
-
-    reducer_self.tid = clearTimeout reducer_self.tid if reducer_self.tid
-    reduced_data = opt.reduce reducer_self.acc
-    reducer_self.acc = []
-
-
-    unless reduced_data instanceof Args
-      reduced_data = new Args reduced_data
-
-    reducer_self.pending_context.next reduced_data
-    reducer_self.pending_context = null
-
-
-  reducer_self.acc = []
-  return reducer_self
+#
+# hyper_chain.reducer = (opt)->
+#   reducer_self = (cur, execute_context)->
+#     reducer_self.reducedPending()
+#
+#     reducer_self.pending_context = execute_context
+#     reducer_self.acc.push cur
+#     if opt.needFlush reducer_self.acc
+#       reducer_self.continuePending()
+#     else if opt.time_slice and not reducer_self.tid
+#       reducer_self.tid = setTimeout reducer_self.continuePending, opt.time_slice
+#
+#   reducer_self.reducedPending = ()->
+#     return unless reducer_self.pending_context
+#     reducer_self.pending_context._exit 'reduced'
+#     reducer_self.pending_context = null
+#
+#   reducer_self.continuePending = ()->
+#     throw new Error 'pending context not exist' unless reducer_self.pending_context
+#
+#     reducer_self.tid = clearTimeout reducer_self.tid if reducer_self.tid
+#     reduced_data = opt.reduce reducer_self.acc
+#     reducer_self.acc = []
+#
+#
+#     unless reduced_data instanceof Args
+#       reduced_data = new Args reduced_data
+#
+#     reducer_self.pending_context.next reduced_data
+#     reducer_self.pending_context = null
+#
+#
+#   reducer_self.acc = []
+#   return reducer_self
 
 hyper_chain.Args = Args
 module.exports = exports = hyper_chain
