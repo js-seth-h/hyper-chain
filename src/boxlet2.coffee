@@ -4,18 +4,22 @@ debug = require('debug')('hc.Boxlet2')
 
 ###
 
+Trigger 계열
+  * Manual: 쭉기다리다가 명령이 오면 나감.
+  * ASAP 들어오는 즉시 나감
+  * Debounce: 지연된 시간내의 것을 모아서.
+  * Interval: 지정된 간격으로 나감
+  * Emittable : 특정 조건을 만족하여 나갈수 있을때
+
 Puller 계열
-  * Reduce 리듀싱 처리
+  * passthough 들어온 것을 그대로 내보냄
+  * reduce 리듀싱 처리
   * PullAll
 
-outer 계열
-
-Trigger 계열
-* Manual: 쭉기다리다가 명령이 오면 나감.
-* ASAP 들어오는 즉시 나감
-* Debounce: 지연된 시간내의 것을 모아서.
-* Interval: 지정된 간격으로 나감
-* Emittable : 특정 조건을 만족하여 나갈수 있을때
+Outer 계열
+  * serial 순차 처리
+  * parallel 전체 동시 병렬 처리
+  * nParallel 갯수 제한 동시 처리
 
 ###
 
@@ -29,13 +33,13 @@ class Boxlet
     @data = []
     @reset()
   reset: ()->
-    reduce = null
     @afterPut = hc() # event handler
-
+    @manual()
     @puller = hc() # 데이터 추출 루틴
+    @passthough()
     @outer = hc() # 방출 제어 루틴.
+    @serial()
     @handler = hc() # 개별 방출 핸들러
-
     return this
   put: (item)->
     @data.push item
@@ -79,25 +83,28 @@ class Boxlet
 
 
 _proto Boxlet,
-  ###
-  ASAP라면..
-  ###
+  manual : ()->
+    box = this
+    box.afterPut.clear()
+    return box
   ASAP : ()->
-    @afterPut
+    box = this
+    box.afterPut.clear()
       .do ()->
         box.pullOut()
     return box
 
-  Interval : (msec)->
+  interval : (msec)->
     box = this
+    box.afterPut.clear()
     _tick = ()->
       box.pullOut()
     setInterval _tick, msec
     return box
 
-  Debounce : (msec)->
+  debounce : (msec)->
     box = this
-    box.afterPut
+    box.afterPut.clear()
       .do ()->
         return if box.tid
         _dfn = ()->
@@ -106,16 +113,16 @@ _proto Boxlet,
         box.tid = setTimeout _dfn, msec
     return box
 
-  pullAll: ()->
+  passthough: ()->
     box = this
-    box.puller.do (box)->
+    box.puller.clear().do (box)->
       list = box.data
       box.data = []
       @feedback.reset list
     return box
-  pullReduce: (reduce_fn)->
+  reduce: (reduce_fn)->
     box = this
-    box.puller.do (box)->
+    box.puller.clear().do (box)->
       list = box.data
       box.data = []
       val = reduce_fn list
@@ -125,7 +132,7 @@ _proto Boxlet,
   par : ()-> @parallel()
   parallel : ()->
     box = this
-    box.outer.await (data, done)->
+    box.outer.clear().await (data, done)->
       _fn = hc()
       box.feedbacks = _.map data, (d)-> undefined
       box.errors = _.map data, (d)-> undefined
@@ -142,7 +149,7 @@ _proto Boxlet,
   ser : ()-> @serial()
   serial : ()->
     box = this
-    box.outer.await (data, done)->
+    box.outer.clear().await (data, done)->
       _fn = hc()
       box.feedbacks = _.map data, (d)-> undefined
       box.errors = _.map data, (d)-> undefined
@@ -183,7 +190,7 @@ _proto Boxlet,
   nParallel : (concurrent)->
     box = this
     s = new Semaphore concurrent
-    box.outer.await (data, done)->
+    box.outer.clear().await (data, done)->
       _fn = hc()
       box.feedbacks = _.map data, (d)-> undefined
       box.errors = _.map data, (d)-> undefined

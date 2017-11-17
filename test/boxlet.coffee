@@ -13,7 +13,6 @@ describe 'Boxlet.parallel', ()->
 
     box = new Boxlet()
       .puts [0...10]
-      .pullAll()
       .parallel()
 
     box.handler
@@ -31,8 +30,7 @@ describe 'Boxlet.serial', ()->
   it 'when start and callbacked, then feedbacks fullfill', (done)->
 
     box = new Boxlet()
-      .puts [0...10]
-      .pullAll()
+      .puts [0...10] 
       .serial()
 
     last = -1
@@ -55,7 +53,6 @@ describe 'Boxlet.nParallel', ()->
 
     box = new Boxlet()
       .puts [0...10]
-      .pullAll()
       .parallel()
     box.handler
       .map (cur)-> cur * cur
@@ -69,7 +66,6 @@ describe 'Boxlet.nParallel', ()->
 
     box = new Boxlet()
       .puts [0...10]
-      .pullAll()
       .nParallel 2
 
     box.handler
@@ -94,14 +90,14 @@ describe 'Boxlet.reduce', ()->
   it 'reduce', (done)->
     box = new Boxlet()
       .puts [0...10]
-      .pullReduce (list)->
+      .reduce (list)->
         return _.sum list
       .parallel()
 
     box.handler
       .feedback (feedback, cur)->
         feedback.set 0, cur
-        
+
     box.pullOut (err, Boxlet)->
       expect(Boxlet.feedbacks[0]).be.eql _.sum [0...10]
       done()
