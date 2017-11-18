@@ -2,14 +2,12 @@ debug =  require('debug')('hc')
 
 _ = require 'lodash'
 
-ASAP = (fn)-> process.nextTick fn
-#
-# assureArray = (value)->
-#   return [] if value is undefined
-#   return value if Array.isArray(value)
-#   return [ value ]
 
-class Args
+_ASAP = (fn)-> setTimeout fn, 0
+if process.nextTick
+  _ASAP = (fn)-> process.nextTick fn
+
+class Args # TODO  1: 'test', 2: var 식의 처리 고안하자
   constructor : (@args...)->
   reset: (@args...)->
   set: (inx, val)->
@@ -26,7 +24,7 @@ createExecuteContext = (internal_fns, _callback)->
   outCallback = (error, exit_status)->
     exe_ctx.exit_status = exit_status
     exe_ctx.error = error
-    ASAP ()-> # 만약 외부 콜백에 문제가 있더라도 내부 프로세스를 타면 안됨
+    _ASAP ()-> # 만약 외부 콜백에 문제가 있더라도 내부 프로세스를 타면 안됨
       return unless _callback
       [cb, _callback] = [_callback, null]
       debug 'outcallback', exe_ctx.error, exe_ctx.feedback, exe_ctx
@@ -306,10 +304,10 @@ applyChainBuilder = (chain)->
         exe_ctx.resume()
     return chain
 
-  chain.reduce = (fn)->
-    chain._internal_fns.push (exe_ctx)->
-      fn.call exe_ctx, exe_ctx.curArgs.args..., exe_ctx
-    return chain
+  # chain.reduce = (fn)->
+  #   chain._internal_fns.push (exe_ctx)->
+  #     fn.call exe_ctx, exe_ctx.curArgs.args..., exe_ctx
+  #   return chain
 
 applyInvokeFn = (chain)->
   chain.invoke = (inputs...)->
@@ -320,10 +318,10 @@ applyInvokeFn = (chain)->
       # _callback = undefined
 
     exe_ctx = createExecuteContext chain._internal_fns, _callback
-    ASAP ()->
-      # exe_ctx.resume()
-      exe_ctx.inputs = inputs
-      exe_ctx.next new Args inputs...
+    # _ASAP ()->
+    #   # exe_ctx.resume()
+    exe_ctx.inputs = inputs
+    exe_ctx.next new Args inputs...
     return exe_ctx
 
   chain.throwIn = (err)->
@@ -331,8 +329,8 @@ applyInvokeFn = (chain)->
 
     exe_ctx.error = err
     # debug 'throwIn', exe_ctx
-    ASAP ()->
-      exe_ctx.resume()
+    # _ASAP ()->
+    exe_ctx.resume()
     return exe_ctx
 
   chain.invokeByEvent = (src_obj, event_name)->

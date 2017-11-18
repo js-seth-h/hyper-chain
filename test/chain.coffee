@@ -10,17 +10,12 @@ scenario = it
 Features와, 테스트 시나리오
 
   함수일것 = 호출이 가능할것.
-  값제어 .do, .map
+  값제어 .do .map .load .store
   처리 제어.filter
-  비동기 .async, .wait .promise
+  비동기 .async .await .promise .wait
   에러 제어 .catch .finally
-  반환 제어 .feedback
+  반환 제어 .feedback .feedbackExeContext
   시간제어 .delay .delayIf
-  처리 합병 .reduce
-
-  .reactTo
-  .concatTo
-  .forkFrom
 
 ###
 describe 'chain is a function', ()->
