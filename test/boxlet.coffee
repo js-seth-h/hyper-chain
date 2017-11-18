@@ -168,3 +168,36 @@ describe 'Boxlet.reduce', ()->
     box.pullOut (err, Boxlet)->
       expect(Boxlet.feedbacks[0]).be.eql _.sum [0...10]
       done()
+
+
+
+describe 'Boxlet setHandler', ()->
+  it 'setHandler', (done)->
+
+    _han = hc()
+      .map (cur)-> cur * cur
+      .feedback (feedback, cur)->
+        feedback.set 0, cur
+
+    box = new Boxlet()
+      .puts [0...10]
+      .parallel()
+      .setHandler _han
+      .pullOut (err, Boxlet)->
+        expect(Boxlet.feedbacks).be.eql [0...10].map (x)-> x * x
+        done()
+
+  it 'setDataHandler', (done)->
+
+    _han = hc()
+      .map (cur)-> cur * cur
+      .feedback (feedback, cur)->
+        feedback.set 0, cur
+
+    box = new Boxlet()
+      .puts [0...10]
+      .parallel()
+      .setDataHandler _han
+      .pullOut (err, Boxlet)->
+        expect(Boxlet.feedbacks).be.eql [0...10].map (x)-> x * x
+        done()
