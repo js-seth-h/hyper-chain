@@ -1,11 +1,79 @@
 hc = require '../src'
-Boxlet = hc.Boxlet 
+Boxlet = hc.Boxlet
 chai = require 'chai'
 expect = chai.expect
 debug = require('debug')('test')
 _ = require 'lodash'
 feature = describe
 scenario = it
+
+describe 'Boxlet Triggers;', ()->
+
+  it 'consecution', (done)->
+      box = new Boxlet()
+        .consecution()
+      box.handler.feedback (feedback, cur)->
+        debug 'feedback.set'
+        feedback.set 0, cur * cur
+
+      box.put 9
+      debug 'check expect'
+      expect(box.data).to.have.lengthOf 0
+      done()
+
+  it 'asap', (done)->
+      box = new Boxlet()
+        .asap()
+      box.handler.feedback (feedback, cur)->
+        feedback.set 0, cur * cur
+
+      box.put 9
+      expect(box.data).to.have.lengthOf 1
+      _dfn = ()->
+        expect(box.data).to.have.lengthOf 0
+        done()
+      setTimeout _dfn, 10
+
+  it 'debounce', (done)->
+      box = new Boxlet()
+        .debounce 20
+      box.handler.feedback (feedback, cur)->
+        feedback.set 0, cur * cur
+
+      box.put 9
+      expect(box.data).to.have.lengthOf 1
+
+      setTimeout (()->
+        box.put 20
+        expect(box.data).to.have.lengthOf 2
+      ), 10
+
+      _dfn = ()->
+        expect(box.data).to.have.lengthOf 0
+        done()
+      setTimeout _dfn, 25
+
+  it 'interval', (done)->
+      box = new Boxlet()
+        .interval 20
+      box.handler.feedback (feedback, cur)->
+        feedback.set 0, cur * cur
+
+      box.put 9
+      expect(box.data).to.have.lengthOf 1
+
+      setTimeout (()->
+        expect(box.data).to.have.lengthOf 0
+        box.put 20
+        expect(box.data).to.have.lengthOf 1
+      ), 25
+
+      _dfn = ()->
+        expect(box.data).to.have.lengthOf 0
+        done()
+      setTimeout _dfn, 45
+
+
 
 describe 'Boxlet.parallel', ()->
   it 'when start and callbacked, then feedbacks fullfill', (done)->

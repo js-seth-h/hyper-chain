@@ -2,19 +2,19 @@ _ = require 'lodash'
 hc = require './chain'
 debug = require('debug')('hc.Boxlet2')
 
+
 ###
 
 Trigger 계열
   * Manual: 쭉기다리다가 명령이 오면 나감.
-  * ASAP 들어오는 즉시 나감
-  * Debounce: 지연된 시간내의 것을 모아서.
-  * Interval: 지정된 간격으로 나감
-  * Emittable : 특정 조건을 만족하여 나갈수 있을때
+  * consecution: 들어오는 즉시 나감. 처리함수의 연속.
+  * asap : 가능한 빨리 큐에서 꺼냄. 비동기
+  * debounce: 지연된 시간내의 것을 모아서.
+  * interval: 지정된 간격으로 나감
 
 Puller 계열
   * passthough 들어온 것을 그대로 내보냄
   * reduce 리듀싱 처리
-  * PullAll
 
 Outer 계열
   * serial 순차 처리
@@ -22,6 +22,10 @@ Outer 계열
   * nParallel 갯수 제한 동시 처리
 
 ###
+
+_ASAP = (fn)-> setTimeout fn, 0
+if process.nextTick
+  _ASAP = (fn)-> process.nextTick fn
 
 
 _proto = (klass, dict)->
@@ -41,23 +45,26 @@ class Boxlet
     @serial()
     @handler = hc() # 개별 방출 핸들러
     return this
-  put: (item)->
-    @data.push item
+
+  _push: (items...)->
+    @data.push items...
+    debug '_push'
     @afterPut()
+  put: (item)->
+    @_push item
     return this
   putAll: (items...)->
-    @data.push items...
-    @afterPut()
+    @_push items...
     return this
   puts: (array)->
-    @data.push array...
-    @afterPut()
+    @_push array...
     return this
 
   pullOut: (callback)->
     box = this
     _fn = hc()
       .await "data", (done)->
+        debug 'call puller'
         box.puller box, done
       #   list = box.data
       #   box.data = []
@@ -68,8 +75,11 @@ class Boxlet
       #   box.reduce data, done
       .load "data"
       .await (data, done)->
+        debug 'call outter'
         box.outer data, done
-    _fn (err)-> callback err, box
+    _fn (err)->
+      if callback
+        callback err, box
 
     return this
 
@@ -87,12 +97,22 @@ _proto Boxlet,
     box = this
     box.afterPut.clear()
     return box
-  ASAP : ()->
+  consecution : ()->
     box = this
     box.afterPut.clear()
       .do ()->
+        debug 'consecution call pullOut'
         box.pullOut()
     return box
+
+  asap: ()->
+    box = this
+    box.afterPut.clear()
+      .do ()->
+        _dfn = ()-> box.pullOut()
+        _ASAP _dfn
+    return box
+
 
   interval : (msec)->
     box = this
