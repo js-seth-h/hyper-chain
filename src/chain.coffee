@@ -4,7 +4,7 @@ _ = require 'lodash'
 
 
 _ASAP = (fn)-> setTimeout fn, 0
-if process.nextTick
+if process?.nextTick?
   _ASAP = (fn)-> process.nextTick fn
 
 class Args # TODO  1: 'test', 2: var 식의 처리 고안하자

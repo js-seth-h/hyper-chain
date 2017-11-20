@@ -24,7 +24,7 @@ Outer 계열
 ###
 
 _ASAP = (fn)-> setTimeout fn, 0
-if process.nextTick
+if process?.nextTick?
   _ASAP = (fn)-> process.nextTick fn
 
 
