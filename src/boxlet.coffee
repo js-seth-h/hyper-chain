@@ -46,18 +46,18 @@ class Boxlet
     @handler = hc() # 개별 방출 핸들러
     return this
 
-  _push: (items...)->
+  _push: (items)->
     @data.push items...
     debug '_push'
     @afterPut()
   put: (item)->
-    @_push item
+    @_push [ item ]
     return this
   putAll: (items...)->
-    @_push items...
+    @_push items
     return this
   puts: (array)->
-    @_push array...
+    @_push array
     return this
 
   pullOut: (callback)->
