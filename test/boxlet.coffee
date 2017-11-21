@@ -18,7 +18,7 @@ describe 'Boxlet Triggers;', ()->
 
       box.put 9
       debug 'check expect'
-      expect(box.data).to.have.lengthOf 0
+      expect(box.internal_buffer).to.have.lengthOf 0
       done()
 
   it 'asap', (done)->
@@ -28,9 +28,9 @@ describe 'Boxlet Triggers;', ()->
         feedback.set 0, cur * cur
 
       box.put 9
-      expect(box.data).to.have.lengthOf 1
+      expect(box.internal_buffer).to.have.lengthOf 1
       _dfn = ()->
-        expect(box.data).to.have.lengthOf 0
+        expect(box.internal_buffer).to.have.lengthOf 0
         done()
       setTimeout _dfn, 10
 
@@ -41,15 +41,15 @@ describe 'Boxlet Triggers;', ()->
         feedback.set 0, cur * cur
 
       box.put 9
-      expect(box.data).to.have.lengthOf 1
+      expect(box.internal_buffer).to.have.lengthOf 1
 
       setTimeout (()->
         box.put 20
-        expect(box.data).to.have.lengthOf 2
+        expect(box.internal_buffer).to.have.lengthOf 2
       ), 10
 
       _dfn = ()->
-        expect(box.data).to.have.lengthOf 0
+        expect(box.internal_buffer).to.have.lengthOf 0
         done()
       setTimeout _dfn, 25
 
@@ -60,16 +60,16 @@ describe 'Boxlet Triggers;', ()->
         feedback.set 0, cur * cur
 
       box.put 9
-      expect(box.data).to.have.lengthOf 1
+      expect(box.internal_buffer).to.have.lengthOf 1
 
       setTimeout (()->
-        expect(box.data).to.have.lengthOf 0
+        expect(box.internal_buffer).to.have.lengthOf 0
         box.put 20
-        expect(box.data).to.have.lengthOf 1
+        expect(box.internal_buffer).to.have.lengthOf 1
       ), 25
 
       _dfn = ()->
-        expect(box.data).to.have.lengthOf 0
+        expect(box.internal_buffer).to.have.lengthOf 0
         done()
       setTimeout _dfn, 45
 
