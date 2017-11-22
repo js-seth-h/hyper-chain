@@ -2,12 +2,10 @@
   "name": "hyper-chain",
   "version": "0.1.5-2",
   "description": "function builder for reactive programing. support promise, node-callback and designed for robust error handling. ",
-  "main": "lib",
+  "main": "index",
   "scripts": {
-    "build": "coffee -c -b -o lib src  ",
-    "clean": "rm -r lib",
+    "build": "coffee -c -b -o lib-js lib  ",
     "prepublish": "npm run-script build",
-    "postpublish": "npm run-script clean",
     "test": "mocha"
   },
   "repository": {

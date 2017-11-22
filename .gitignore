@@ -29,13 +29,13 @@ _ReSharper*/
 [Tt]est[Rr]esult*
 
 
-node_modules 
+node_modules
 node_modules/*
-public/cup  
+public/cup
 iisnode/
-public/cup/  
+public/cup/
 components/
-lib/
+lib-js
 spec/
 coverage/
 .nyc_output/
