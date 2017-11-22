@@ -222,6 +222,9 @@ applyChainBuilder = (chain)->
     return chain
 
   chain.async = (name_at_group, fn)->
+    unless fn
+      fn = name_at_group
+      name_at_group = chain._internal_fns.length.toString()
     chain._internal_fns.push (exe_ctx)->
       a_done = exe_ctx.createSynchronizePoint name_at_group
 
