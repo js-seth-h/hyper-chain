@@ -4,26 +4,46 @@ debug = require('debug')('hc.Boxlet2')
 
 
 ###
+소스는 유한 vs 무한
+유한 = 더이상 소스가 발생하지 않음? 한번 End에 도달하면 끝
+무한 = end에 도달해도 추후 발생할수있다.
+
+크기를 알수 있는것 vs 알수 없는것 있음.
+아는것 = size를 미리 안다
+모르는것 = null(EOF)가 나오면 끝
+
+Boxlet
+  .iter ()-> cursor.next()
+  .fill [...]
+  .buffer() # .put 가능.
+
+  .passthuru
+  .dequeue
+  .chunk 5
+  .reduce
+  .latest
 
 
-Trigger 계열 - pullout에 대한 자동화
+
+
+reactive 계열 - pullout의 행동에 대한 반응 처리
   * consecution: 들어오는 즉시 나감. 처리함수의 연속.
   * asap : 가능한 빨리 큐에서 꺼냄. 비동기
   * debounce: 지연된 시간내의 것을 모아서.
-  * throttle: 우선 들어온것 처리하고, given time 동안 처리를 안함.
+  * throttle: 우선 들어온것 처리하고, given time 동안 처리를 지연하여 처리
   * interval: 지정된 간격으로 나감
   * backPressure:
-    pullOut이 처리되면 연속 호출
-    처리할 데이터가 없으면? setTimeout
-    최초의 시작은?
-    데이터가 없으면 알림?
-    
-  
+      pullOut이 처리되면 연속 호출
+      처리할 데이터가 없으면? setTimeout
+      최초의 시작은? 자동으로 함.
+  * manual : pullout을 그대로 호출함.
+
+
 Puller 계열
-  * passthough 들어온 것을 그대로 내보냄
+  * passthough : 들어온 것을 그대로 내보냄
   * dequeue: 1개만 꺼냄
-  * latest 가장 마지막 것만 처리
-  * reduce 리듀싱 처리
+  * latest: 다 버리고 가장 마지막 것
+  * reduce: 리듀싱 함수 호출
   * outSource: 외부에서 가져옴
 
 Outer 계열
@@ -35,9 +55,12 @@ Handler
   * 100% 커스텀.
 
 대량 처리시의 문제.
-이때는 puts로 전부 넣기가 무리고, 
+이때는 puts로 전부 넣기가 무리고,
 스트림처리식도 부족함. 동기화가 안되서, 막 밀어넣고 전부 버퍼링 되게됨.
-BackPressure 개념을 적용해야하나..?
+BackPressure 개념뿐인데..
+문제는 끝나는 시점이 정확하지 않다.
+  끝 = .next() is null  + all pullout execute done
+
 
 
 ###
@@ -45,7 +68,7 @@ BackPressure 개념을 적용해야하나..?
 _ASAP = (fn)-> setTimeout fn, 0
 if process?.nextTick?
   _ASAP = process.nextTick
-  
+
 
 _proto = (klass, dict)->
   for own key, v of dict
@@ -59,7 +82,7 @@ class Boxlet
     # @afterPut = hc() # event handler
     # @afterPullOut = hc() #event handler
     @trigger = hc()
-    
+
     @manual()
     @puller = hc() # 데이터 추출 루틴
     @passthough()
@@ -87,7 +110,7 @@ class Boxlet
     _fn = hc()
       .await "data", (done)->
         debug 'call puller'
-        box.puller box, done 
+        box.puller box, done
       .load "data"
       .await (data, done)->
         debug 'call outter'
@@ -129,19 +152,19 @@ _proto Boxlet,
       .do (timing_name)->
         return if timing_name isnt 'after-put'
         _ASAP ()-> box.pullOut()
-    return box 
-  
+    return box
+
   backPressure: (msec)->
     box = this
     box.trigger.clear()
       .do (timing_name, data)->
-        return if timing_name isnt 'after-pullout'        
-        _pullout = ()-> box.pullOut() 
-        if data.length > 0 
+        return if timing_name isnt 'after-pullout'
+        _pullout = ()-> box.pullOut()
+        if data.length > 0
           _ASAP _pullout
-        else 
+        else
           setTimeout _pullout, msec
-    
+
   interval : (msec)->
     box = this
     box.trigger.clear()
@@ -154,7 +177,7 @@ _proto Boxlet,
     box = this
     box.trigger.clear()
       .do (timing_name)->
-        return if timing_name isnt 'after-put' 
+        return if timing_name isnt 'after-put'
         return if box.tid
         _dfn = ()->
           box.tid = null
@@ -162,12 +185,12 @@ _proto Boxlet,
         box.tid = setTimeout _dfn, msec
         box.pullOut()
     return box
-    
+
   debounce : (msec)->
     box = this
     box.trigger.clear()
       .do (timing_name)->
-        return if timing_name isnt 'after-put'  
+        return if timing_name isnt 'after-put'
         return if box.tid
         _dfn = ()->
           box.tid = null
@@ -187,7 +210,7 @@ _proto Boxlet,
     box.puller.clear().do (box)->
       list = box.internal_buffer
       box.internal_buffer = []
-      @feedback.reset [ _.last list ]  
+      @feedback.reset [ _.last list ]
   reduce: (reduce_fn)->
     box = this
     box.puller.clear().do (box)->
